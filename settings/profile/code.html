@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings/Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0df280",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#102219",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+        
+        /* Toggle Switch Custom Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #0df280;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0df280;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased overflow-x-hidden transition-colors duration-200">
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark group/design-root overflow-hidden border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-50 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-3 justify-between border-b border-slate-200 dark:border-slate-800">
+<button class="text-slate-900 dark:text-white hover:text-primary dark:hover:text-primary transition-colors flex size-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center">Profile &amp; Settings</h2>
+<div class="flex w-10 items-center justify-end">
+<button class="text-primary text-base font-bold leading-normal tracking-wide shrink-0 hover:text-primary/80 transition-colors">Done</button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-10">
+<!-- Profile Header -->
+<section class="flex p-6 flex-col items-center">
+<div class="relative group cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-28 w-28 ring-4 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300" data-alt="Portrait of a smiling young woman with short hair" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDyQcdsAmNWGlbavzAoZfE_00f5mi6MDZdiengXtvZ07dfRouDCdUHHOZOAR_Sv31HUpb5arOecYerkUXYXeSf_0mu3Dw1-Y8-v8kKphkGA1hKaz_cikT22y4i8NlLNOZ2KSszhcyFU2Wu3gOC1JsRRB0pthXqWr-8ATGFmnXMuANwdg7pol5osqBWhsYo3TY24f7nC_X43NPsqPb7cd2DXwmZpUAS43am2hOjiDYPkEXPBQ-3jtUcxohNeYwawQAuh1Z-pkTfaxxq6");'></div>
+<div class="absolute bottom-0 right-0 bg-primary text-background-dark p-1.5 rounded-full shadow-lg border-2 border-background-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">edit</span>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center mt-4 gap-1">
+<h1 class="text-slate-900 dark:text-white text-2xl font-bold leading-tight">Alex Chen</h1>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium uppercase tracking-wider">Level 4</span>
+<span class="w-1 h-1 rounded-full bg-slate-400"></span>
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">French Learner</span>
+</div>
+<!-- Stats Badges -->
+<div class="flex gap-3 mt-4 w-full justify-center">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+<span class="material-symbols-outlined text-orange-500 text-[18px]">local_fire_department</span>
+<span class="text-orange-600 dark:text-orange-400 text-sm font-bold">12 Day Streak</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+<span class="material-symbols-outlined text-primary text-[18px]">style</span>
+<span class="text-primary text-sm font-bold">1,240 Cards</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Upgrade Banner -->
+<div class="px-4 mb-6">
+<div class="bg-gradient-to-r from-primary to-emerald-400 p-4 rounded-xl shadow-lg shadow-primary/10 flex items-center justify-between text-background-dark">
+<div class="flex flex-col">
+<span class="font-bold text-lg leading-tight">Go Pro</span>
+<span class="text-sm font-medium opacity-80">Unlimited hearts &amp; offline mode</span>
+</div>
+<span class="material-symbols-outlined text-3xl bg-white/20 p-2 rounded-full">diamond</span>
+</div>
+</div>
+<!-- Learning Goals Section -->
+<div class="px-4">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider px-2 mb-2">Learning Goals</h3>
+<div class="bg-white dark:bg-slate-800/50 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<!-- Daily Goal Segmented Button -->
+<div class="p-4 border-b border-slate-100 dark:border-slate-700/50">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">flag</span>
+<span class="text-slate-900 dark:text-white font-medium">Daily Goal</span>
+</div>
+</div>
+<div class="flex bg-slate-100 dark:bg-slate-900/80 p-1 rounded-lg">
+<label class="flex-1 cursor-pointer relative">
+<input class="peer sr-only" name="goal" type="radio"/>
+<div class="flex items-center justify-center py-2 text-sm font-medium text-slate-500 dark:text-slate-400 rounded-md transition-all peer-checked:bg-white dark:peer-checked:bg-slate-700 peer-checked:text-slate-900 dark:peer-checked:text-white peer-checked:shadow-sm">10 Cards</div>
+</label>
+<label class="flex-1 cursor-pointer relative">
+<input checked="" class="peer sr-only" name="goal" type="radio"/>
+<div class="flex items-center justify-center py-2 text-sm font-medium text-slate-500 dark:text-slate-400 rounded-md transition-all peer-checked:bg-white dark:peer-checked:bg-slate-700 peer-checked:text-slate-900 dark:peer-checked:text-white peer-checked:shadow-sm">20 Cards</div>
+</label>
+<label class="flex-1 cursor-pointer relative">
+<input class="peer sr-only" name="goal" type="radio"/>
+<div class="flex items-center justify-center py-2 text-sm font-medium text-slate-500 dark:text-slate-400 rounded-md transition-all peer-checked:bg-white dark:peer-checked:bg-slate-700 peer-checked:text-slate-900 dark:peer-checked:text-white peer-checked:shadow-sm">30 Cards</div>
+</label>
+</div>
+</div>
+<!-- Auto-Play Audio -->
+<div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+<div class="flex items-center gap-3">
+<div class="bg-blue-500/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-blue-500 text-[20px]">volume_up</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Audio Auto-play</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-600 appearance-none cursor-pointer transition-all duration-300 left-0 checked:left-6 checked:border-primary" id="audio-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 dark:bg-slate-600 cursor-pointer transition-colors duration-300" for="audio-toggle"></label>
+</div>
+</div>
+<!-- Haptic Feedback -->
+<div class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+<div class="flex items-center gap-3">
+<div class="bg-purple-500/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-purple-500 text-[20px]">vibration</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Haptic Feedback</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-600 appearance-none cursor-pointer transition-all duration-300 left-0 checked:left-6 checked:border-primary" id="haptic-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 dark:bg-slate-600 cursor-pointer transition-colors duration-300" for="haptic-toggle"></label>
+</div>
+</div>
+</div>
+</div>
+<!-- Notifications Section -->
+<div class="px-4 mt-6">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider px-2 mb-2">Notifications</h3>
+<div class="bg-white dark:bg-slate-800/50 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<!-- Study Reminder -->
+<div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="bg-yellow-500/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-yellow-500 text-[20px]">notifications_active</span>
+</div>
+<div class="flex flex-col">
+<span class="text-slate-900 dark:text-white font-medium text-base">Study Reminder</span>
+<span class="text-slate-500 text-xs">Daily at 8:00 PM</span>
+</div>
+</div>
+<div class="flex items-center text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors">
+<span class="text-sm font-semibold mr-2">8:00 PM</span>
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</div>
+</div>
+<!-- Streak Freeze Alerts -->
+<div class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+<div class="flex items-center gap-3">
+<div class="bg-cyan-500/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-cyan-500 text-[20px]">ac_unit</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Streak Freeze Alerts</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-600 appearance-none cursor-pointer transition-all duration-300 left-0 checked:left-6 checked:border-primary" id="streak-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 dark:bg-slate-600 cursor-pointer transition-colors duration-300" for="streak-toggle"></label>
+</div>
+</div>
+</div>
+</div>
+<!-- Account & Privacy Section -->
+<div class="px-4 mt-6">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider px-2 mb-2">Account</h3>
+<div class="bg-white dark:bg-slate-800/50 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group" href="#">
+<div class="flex items-center gap-3">
+<div class="bg-slate-200 dark:bg-slate-700 p-2 rounded-lg">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">person</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Personal Details</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group" href="#">
+<div class="flex items-center gap-3">
+<div class="bg-slate-200 dark:bg-slate-700 p-2 rounded-lg">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">lock</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Password &amp; Security</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group" href="#">
+<div class="flex items-center gap-3">
+<div class="bg-slate-200 dark:bg-slate-700 p-2 rounded-lg">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">privacy_tip</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium text-base">Data Privacy</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Danger Zone -->
+<div class="px-4 mt-6 mb-8">
+<button class="w-full bg-white dark:bg-slate-800/50 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-bold py-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">logout</span>
+                    Log Out
+                </button>
+<div class="mt-4 text-center">
+<p class="text-xs text-slate-400 dark:text-slate-600 font-medium">Version 2.4.1 (Build 890)</p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Visual Only) -->
+<nav class="bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">school</span>
+<span class="text-[10px] font-medium">Learn</span>
+</button>
+<div class="relative -top-6">
+<button class="flex items-center justify-center w-14 h-14 bg-primary text-background-dark rounded-full shadow-lg shadow-primary/40 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+</div>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">leaderboard</span>
+<span class="text-[10px] font-medium">Rank</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary dark:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px] fill-current">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</nav>
+</div>
+</body></html>
