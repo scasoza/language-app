@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+    <title>LinguaFlow - AI Language Learning</title>
+
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <!-- Theme Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0df280",
+                        "primary-dark": "#0abf63",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#102219",
+                        "surface-dark": "#183426",
+                        "surface-light": "#ffffff",
+                        "card-dark": "#1a3528",
+                        "accent-gray": "#2A4035"
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        'neon': '0 0 15px rgba(13, 242, 128, 0.2)',
+                        'neon-hover': '0 0 25px rgba(13, 242, 128, 0.4)',
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Material symbols filled */
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Range slider styling */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px; width: 20px;
+            border-radius: 50%;
+            background: #0df280;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(13, 242, 128, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer;
+            background: #2a4035;
+            border-radius: 2px;
+        }
+
+        /* Screen transitions */
+        .screen { display: none; }
+        .screen.active { display: flex; }
+
+        /* Glass panel effect */
+        .glass-panel {
+            background: rgba(24, 52, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(13, 242, 128, 0.2);
+            border-top: 3px solid #0df280;
+            border-radius: 50%;
+            width: 24px; height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Pulse animation */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(13, 242, 128, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(13, 242, 128, 0.6); }
+        }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+        /* Toggle switch */
+        .toggle-checkbox:checked { right: 0; border-color: #0df280; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #0df280; }
+
+        body { min-height: 100dvh; }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
+    <div id="app" class="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark">
+
+        <!-- Onboarding Screen -->
+        <div id="screen-onboarding" class="screen active flex-col h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Home Dashboard Screen -->
+        <div id="screen-home" class="screen flex-col min-h-screen pb-24">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Collections Screen -->
+        <div id="screen-collections" class="screen flex-col min-h-screen pb-24">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Add Word Screen -->
+        <div id="screen-add-word" class="screen flex-col min-h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Study Session Screen -->
+        <div id="screen-study" class="screen flex-col h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Dialogue Generator Screen -->
+        <div id="screen-dialogue-settings" class="screen flex-col min-h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Dialogue Practice Screen -->
+        <div id="screen-dialogue-practice" class="screen flex-col min-h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Settings/Profile Screen -->
+        <div id="screen-settings" class="screen flex-col min-h-screen pb-24">
+            <!-- Content loaded dynamically -->
+        </div>
+
+        <!-- Bottom Navigation (shows on main screens) -->
+        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 hidden">
+            <div class="relative mx-auto max-w-md h-16 rounded-2xl bg-surface-light/80 dark:bg-[#1a2c24]/80 backdrop-blur-lg shadow-lg border border-white/20 dark:border-white/5 flex items-center justify-around px-2">
+                <button onclick="app.navigate('home')" data-nav="home" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-[28px]">home</span>
+                    <span class="text-[10px] font-medium">Home</span>
+                </button>
+                <button onclick="app.navigate('dialogue-settings')" data-nav="dialogue-settings" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-[28px]">forum</span>
+                    <span class="text-[10px] font-medium">Dialogue</span>
+                </button>
+                <div class="relative -top-6">
+                    <button onclick="app.navigate('add-word')" class="flex items-center justify-center size-14 rounded-full bg-primary text-background-dark shadow-[0_4px_12px_rgba(13,242,128,0.4)] hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-3xl">add</span>
+                    </button>
+                </div>
+                <button onclick="app.navigate('collections')" data-nav="collections" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-[28px]">style</span>
+                    <span class="text-[10px] font-medium">Decks</span>
+                </button>
+                <button onclick="app.navigate('settings')" data-nav="settings" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-[28px]">person</span>
+                    <span class="text-[10px] font-medium">Profile</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2"></div>
+
+        <!-- Modal Container -->
+        <div id="modal-container" class="fixed inset-0 z-[90] hidden">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="app.closeModal()"></div>
+            <div id="modal-content" class="absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Load App Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/gemini-service.js"></script>
+    <script src="js/screens/onboarding.js"></script>
+    <script src="js/screens/home.js"></script>
+    <script src="js/screens/collections.js"></script>
+    <script src="js/screens/add-word.js"></script>
+    <script src="js/screens/study.js"></script>
+    <script src="js/screens/dialogue-settings.js"></script>
+    <script src="js/screens/dialogue-practice.js"></script>
+    <script src="js/screens/settings.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
