@@ -1,0 +1,46 @@
+{
+  "name": "linguaflow",
+  "version": "1.0.0",
+  "description": "AI-powered language learning app with Gemini integration",
+  "main": "src/index.html",
+  "scripts": {
+    "start": "npx serve www -l 3000",
+    "dev": "npx serve www -l 3000",
+    "build": "npm run copy-assets",
+    "copy-assets": "cp -r src/* www/",
+    "android:dev": "npx cap run android",
+    "android:live": "npx cap run android --livereload --external",
+    "android:build": "npx cap build android",
+    "android:open": "npx cap open android",
+    "android:sync": "npx cap sync android",
+    "ios:dev": "npx cap run ios",
+    "ios:live": "npx cap run ios --livereload --external",
+    "ios:build": "npx cap build ios",
+    "ios:open": "npx cap open ios",
+    "ios:sync": "npx cap sync ios"
+  },
+  "keywords": [
+    "language-learning",
+    "flashcards",
+    "spaced-repetition",
+    "gemini-ai",
+    "pwa",
+    "capacitor"
+  ],
+  "author": "LinguaFlow",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "serve": "^14.2.0"
+  }
+}
