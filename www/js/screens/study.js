@@ -17,9 +17,14 @@ const StudyScreen = {
     },
     collectionId: null,
 
-    init(collectionId = null) {
+    init(collectionId = null, studyAll = false) {
         this.collectionId = collectionId;
+        // Get due cards first, but if none due and studyAll, get all cards
         this.cards = DataStore.getDueCards(collectionId);
+        if (this.cards.length === 0 && (studyAll || collectionId)) {
+            // No due cards - get all cards for this collection to allow practice
+            this.cards = DataStore.getCards(collectionId);
+        }
         this.currentIndex = 0;
         this.isFlipped = false;
         this.sessionStats = {
@@ -176,8 +181,38 @@ const StudyScreen = {
 
     renderComplete() {
         const container = document.getElementById('screen-study');
-        const { reviewed, again, hard, good, easy } = this.sessionStats;
+        const { reviewed, again, hard, good, easy, total } = this.sessionStats;
         const accuracy = reviewed > 0 ? Math.round(((good + easy) / reviewed) * 100) : 0;
+
+        // Check if this is "no cards" vs "session complete"
+        const noCards = total === 0 && reviewed === 0;
+
+        if (noCards) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen p-6 text-center">
+                    <div class="mb-8 relative">
+                        <div class="size-32 rounded-full bg-surface-dark flex items-center justify-center">
+                            <span class="material-symbols-outlined text-6xl text-slate-400">style</span>
+                        </div>
+                    </div>
+
+                    <h1 class="text-3xl font-bold mb-2">No Cards Yet</h1>
+                    <p class="text-slate-400 mb-8 max-w-xs">This collection is empty. Add some flashcards to start studying!</p>
+
+                    <div class="flex flex-col gap-3 w-full max-w-sm">
+                        <button onclick="app.navigate('add-word')" class="w-full bg-primary text-background-dark font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-transform">
+                            <span class="material-symbols-outlined">add</span>
+                            Add Flashcard
+                        </button>
+                        <button onclick="app.navigate('collections')" class="w-full bg-surface-dark border border-white/10 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                            Back to Collections
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
 
         container.innerHTML = `
             <div class="flex flex-col items-center justify-center h-screen p-6 text-center">

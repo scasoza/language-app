@@ -237,7 +237,7 @@ const DataStore = {
     addCard(card) {
         const cards = this.getCards();
         const newCard = {
-            id: 'card_' + Date.now(),
+            id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             difficulty: 2,
             nextReview: new Date().toISOString(),
             lastReview: null,

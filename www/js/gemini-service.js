@@ -106,13 +106,66 @@ const GeminiService = {
         return response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     },
 
-    // Extract audio from TTS response
+    // Extract audio from TTS response and convert PCM to WAV
     extractAudio(response) {
-        const data = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (data) {
-            return `data:audio/wav;base64,${data}`;
+        const part = response?.candidates?.[0]?.content?.parts?.[0];
+        if (!part?.inlineData?.data) return null;
+
+        const base64Data = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType || 'audio/L16;rate=24000';
+
+        // If it's already a standard format, return directly
+        if (mimeType.includes('wav') || mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+            return `data:${mimeType};base64,${base64Data}`;
         }
-        return null;
+
+        // Convert PCM (L16) to WAV for browser playback
+        try {
+            const pcmData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            const wavData = this.pcmToWav(pcmData, 24000, 1, 16);
+            const wavBase64 = btoa(String.fromCharCode(...new Uint8Array(wavData)));
+            return `data:audio/wav;base64,${wavBase64}`;
+        } catch (e) {
+            console.error('Audio conversion error:', e);
+            // Fallback: try to play as-is
+            return `data:audio/wav;base64,${base64Data}`;
+        }
+    },
+
+    // Convert raw PCM data to WAV format
+    pcmToWav(pcmData, sampleRate = 24000, numChannels = 1, bitsPerSample = 16) {
+        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+        const blockAlign = numChannels * (bitsPerSample / 8);
+        const dataSize = pcmData.length;
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+
+        // WAV header
+        const writeString = (offset, str) => {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset + i, str.charCodeAt(i));
+            }
+        };
+
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true); // Subchunk1Size
+        view.setUint16(20, 1, true); // AudioFormat (PCM)
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeString(36, 'data');
+        view.setUint32(40, dataSize, true);
+
+        // Copy PCM data
+        const uint8View = new Uint8Array(buffer, 44);
+        uint8View.set(pcmData);
+
+        return buffer;
     },
 
     /**
