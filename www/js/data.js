@@ -275,6 +275,34 @@ const DataStore = {
         return null;
     },
 
+    deleteCard(id) {
+        const cards = this.getCards();
+        const card = cards.find(c => c.id === id);
+        if (card) {
+            const filtered = cards.filter(c => c.id !== id);
+            localStorage.setItem('linguaflow_cards', JSON.stringify(filtered));
+
+            // Update collection card count
+            if (card.collectionId) {
+                const collection = this.getCollection(card.collectionId);
+                if (collection) {
+                    this.updateCollection(card.collectionId, {
+                        cardCount: Math.max(0, collection.cardCount - 1)
+                    });
+                }
+            }
+            return true;
+        }
+        return false;
+    },
+
+    deleteCollection(id) {
+        const collections = this.getCollections();
+        const filtered = collections.filter(c => c.id !== id);
+        localStorage.setItem('linguaflow_collections', JSON.stringify(filtered));
+        return true;
+    },
+
     // Spaced repetition algorithm (SM-2 variant)
     reviewCard(id, quality) {
         // quality: 0 = again, 1 = hard, 2 = good, 3 = easy
