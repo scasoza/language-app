@@ -8,12 +8,20 @@ const DialoguePracticeScreen = {
     isPlaying: false,
     audioElement: null,
     showTranslations: {},
+    autoPlayEnabled: false,
+    lineAudioCache: {},
 
     setDialogue(dialogue) {
         this.dialogue = dialogue;
         this.currentLineIndex = 0;
         this.showTranslations = {};
         this.isPlaying = false;
+        this.autoPlayEnabled = false;
+        this.lineAudioCache = {};
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement = null;
+        }
     },
 
     render() {
@@ -110,11 +118,11 @@ const DialoguePracticeScreen = {
                             <span class="font-bold text-lg">${this.currentLineIndex < lines.length - 1 ? 'Next' : 'Complete'}</span>
                         </button>
 
-                        <button onclick="DialoguePracticeScreen.toggleAuto()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors">
-                            <div class="p-2 rounded-full hover:bg-white/5">
-                                <span class="material-symbols-outlined">settings_voice</span>
+                        <button onclick="DialoguePracticeScreen.toggleAuto()" class="flex flex-col items-center gap-1 ${this.autoPlayEnabled ? 'text-primary' : 'text-gray-400 hover:text-primary'} transition-colors">
+                            <div class="p-2 rounded-full hover:bg-white/5 ${this.autoPlayEnabled ? 'bg-primary/10 ring-1 ring-primary/40' : ''}">
+                                <span class="material-symbols-outlined">${this.autoPlayEnabled ? 'pause_circle' : 'settings_voice'}</span>
                             </div>
-                            <span class="text-[10px] font-bold uppercase">Auto</span>
+                            <span class="text-[10px] font-bold uppercase">${this.autoPlayEnabled ? 'Auto On' : 'Auto'}</span>
                         </button>
                     </div>
                 </div>
@@ -218,28 +226,81 @@ const DialoguePracticeScreen = {
         this.render();
     },
 
-    async playLine(index) {
+    async getLineAudio(index, options = {}) {
+        const { silent = false } = options;
         if (!GeminiService.isConfigured()) {
             app.showToast('Set up API key for audio', 'info');
-            return;
+            return null;
         }
 
         const line = this.dialogue.lines[index];
-        if (!line) return;
+        if (!line) return null;
+
+        if (this.lineAudioCache[index]) {
+            return this.lineAudioCache[index];
+        }
 
         try {
-            app.showToast('Generating audio...', 'info');
+            if (!silent) {
+                app.showToast('Generating audio...', 'info');
+            }
             const audio = await GeminiService.generateTTS(line.text);
             if (audio) {
-                const audioEl = new Audio(audio);
-                audioEl.play();
+                this.lineAudioCache[index] = audio;
+                return audio;
             }
+            return null;
         } catch (error) {
-            app.showToast('Audio generation failed', 'error');
+            if (!silent) {
+                app.showToast('Audio generation failed', 'error');
+            }
+            return null;
         }
     },
 
+    async playLine(index, options = {}) {
+        const { silent = false } = options;
+        const line = this.dialogue?.lines?.[index];
+        if (!line) return false;
+
+        const audioSrc = await this.getLineAudio(index, { silent });
+        if (!audioSrc) return false;
+
+        if (this.audioElement) {
+            this.audioElement.pause();
+        }
+
+        return new Promise((resolve) => {
+            const audioEl = new Audio(audioSrc);
+            this.audioElement = audioEl;
+            this.isPlaying = true;
+
+            audioEl.onended = () => {
+                this.isPlaying = false;
+                this.audioElement = null;
+                this.render();
+                resolve(true);
+            };
+
+            audioEl.onerror = () => {
+                this.isPlaying = false;
+                this.audioElement = null;
+                app.showToast('Audio playback failed', 'error');
+                resolve(false);
+            };
+
+            audioEl.play().catch(() => {
+                this.isPlaying = false;
+                this.audioElement = null;
+                app.showToast('Audio playback failed', 'error');
+                resolve(false);
+            });
+        });
+    },
+
     async generateAudio() {
+        this.stopAutoPlay();
+
         if (this.isPlaying) {
             if (this.audioElement) {
                 this.audioElement.pause();
@@ -315,6 +376,7 @@ const DialoguePracticeScreen = {
     },
 
     restart() {
+        this.stopAutoPlay();
         this.currentLineIndex = 0;
         this.showTranslations = {};
         this.render();
@@ -419,7 +481,57 @@ const DialoguePracticeScreen = {
     },
 
     toggleAuto() {
-        app.showToast('Auto-play coming soon!', 'info');
+        if (this.autoPlayEnabled) {
+            this.stopAutoPlay();
+            app.showToast('Auto-play paused', 'info');
+            this.render();
+            return;
+        }
+
+        if (!GeminiService.isConfigured()) {
+            app.showApiKeyModal();
+            return;
+        }
+
+        this.autoPlayEnabled = true;
+        app.showToast('Auto-play started', 'success');
+        this.render();
+        this.startAutoPlay();
+    },
+
+    async startAutoPlay() {
+        if (!this.dialogue) return;
+
+        // Ensure any previous playback is stopped
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement = null;
+        }
+
+        while (this.autoPlayEnabled && this.currentLineIndex < this.dialogue.lines.length) {
+            const played = await this.playLine(this.currentLineIndex, { silent: true });
+            if (!played || !this.autoPlayEnabled) break;
+
+            if (this.currentLineIndex < this.dialogue.lines.length - 1) {
+                this.currentLineIndex++;
+                this.render();
+            } else {
+                this.autoPlayEnabled = false;
+                this.showComplete();
+                break;
+            }
+        }
+
+        this.render();
+    },
+
+    stopAutoPlay() {
+        this.autoPlayEnabled = false;
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement = null;
+        }
+        this.isPlaying = false;
     }
 };
 
