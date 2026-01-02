@@ -15,10 +15,16 @@ const AddWordScreen = {
     },
     isLoading: false,
     suggestions: [],
+    presetCollectionId: null, // Set this before navigating to pre-select a collection
 
     render() {
         const user = DataStore.getUser();
         const collections = DataStore.getCollections();
+
+        // Apply preset collection if set
+        if (this.presetCollectionId && !this.formData.collectionId) {
+            this.formData.collectionId = this.presetCollectionId;
+        }
 
         const container = document.getElementById('screen-add-word');
         container.innerHTML = `
@@ -373,6 +379,7 @@ const AddWordScreen = {
         };
         this.suggestions = [];
         this.isLoading = false;
+        this.presetCollectionId = null;
     }
 };
 

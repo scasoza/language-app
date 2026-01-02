@@ -55,6 +55,9 @@ const app = {
             case 'collections':
                 CollectionsScreen.render();
                 break;
+            case 'collection-detail':
+                CollectionDetailScreen.render();
+                break;
             case 'add-word':
                 AddWordScreen.render();
                 break;
@@ -123,12 +126,14 @@ const app = {
     openCollection(id) {
         const collection = DataStore.getCollection(id);
         if (collection) {
-            this.startStudySession(id);
+            CollectionDetailScreen.setCollection(id);
+            this.navigate('collection-detail');
         }
     },
 
     editCollection(id) {
-        app.showToast('Edit feature coming soon!', 'info');
+        CollectionDetailScreen.setCollection(id);
+        this.navigate('collection-detail');
     },
 
     showCreateCollectionModal() {
@@ -321,6 +326,48 @@ const app = {
             this.renderScreen(this.currentScreen);
         } else {
             this.showToast('Please enter an API key', 'error');
+        }
+    },
+
+    // Loading overlay with tips
+    loadingTips: [
+        'Did you know? Spaced repetition can improve retention by 200%!',
+        'Tip: Review cards right before you forget them for best results.',
+        'Fun fact: Your brain forms stronger memories while you sleep!',
+        'Pro tip: Learning in context helps you remember vocabulary better.',
+        'Tip: Try to use new words in sentences to reinforce learning.',
+        'Did you know? Music can help with language learning!',
+        'Pro tip: Consistency beats intensity - study a little every day.',
+        'Fun fact: Bilingual brains are better at multitasking!'
+    ],
+
+    showLoadingOverlay(title = 'Loading...', subtitle = '') {
+        const tip = this.loadingTips[Math.floor(Math.random() * this.loadingTips.length)];
+
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        overlay.className = 'fixed inset-0 z-[200] bg-background-dark/95 backdrop-blur-sm flex flex-col items-center justify-center p-8';
+        overlay.innerHTML = `
+            <div class="relative mb-8">
+                <div class="size-24 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl text-primary animate-pulse">auto_awesome</span>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold mb-2 text-center">${title}</h2>
+            <p class="text-slate-400 text-center mb-8">${subtitle}</p>
+            <div class="max-w-sm p-4 rounded-xl bg-surface-dark border border-white/5">
+                <p class="text-sm text-slate-300 text-center italic">"${tip}"</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    },
+
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('opacity-0');
+            setTimeout(() => overlay.remove(), 300);
         }
     },
 
