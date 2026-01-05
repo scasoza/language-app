@@ -1,18 +1,21 @@
 /**
  * Data Management for LinguaFlow
- * Handles localStorage persistence and state management
+ * Uses Supabase when available, falls back to localStorage
  */
 
 const DataStore = {
+    // Flag for backend mode
+    useSupabase: false,
+
     // Default user data
     defaultUser: {
         id: 'user_1',
-        name: 'Alex',
-        level: 4,
+        name: 'Learner',
+        level: 1,
         targetLanguage: 'Spanish',
         nativeLanguage: 'English',
-        streak: 7,
-        totalCardsLearned: 1204,
+        streak: 0,
+        totalCardsLearned: 0,
         dailyGoal: 20,
         settings: {
             audioAutoplay: false,
@@ -24,119 +27,40 @@ const DataStore = {
         createdAt: new Date().toISOString()
     },
 
-    // Default collections
-    defaultCollections: [
-        {
-            id: 'col_1',
-            name: 'Spanish Verbs',
-            emoji: '🇪🇸',
-            cardCount: 124,
-            mastered: 85,
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuARCnrv177dbYx-09jhwgutu8CdDwT4Ew4Ds_J-xum6bH5ncTgOvYjLbPom5Lh7kmHKrmdqFKRk1Orb95lBWOrZDO9bZpY1OjEo8GbLWTELpQhqnXhS6oblTVl0VwW0dXGgLGEB1Ty5lEOn62w6AWU1T2TX-c3MU8Jl62Fe3sFg34q7gRLSKHpp0qECTItNDSYUzpBXbknzbNEfiyqrhfZRIygO1_zUbzuU5gFG69mhxSW527PshDQNTxgnhyeFAhf3GXHiHne4ZWuE',
-            dueCards: 12,
-            lastStudied: new Date().toISOString()
-        },
-        {
-            id: 'col_2',
-            name: 'Kanji N5',
-            emoji: '🇯🇵',
-            cardCount: 80,
-            mastered: 32,
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAOL0n63BaLF6Sf1KXv1qhk-X-od3W2pFu5uYVJ0TLdT-7PbVO4CpTLwPH1mTtIWer8941_QtlCTv1d7AcTumRCjyKjZ9sscyyLv2hoOvEZ-Wgyw5SxGT00yT4ZThjYp06hUBgRAFxJ_XdzixSWHnpicUWaX1J6_CGyaB34mCDASQtQ-gCO2DEUHPWMEXm9g6ITNiQAcxLLu8soCO04Y2yy78IGc9A-bEb6VnKCqtXBfDlXkPTMkXwBxJsAU4yPnduUbgC-FPoxIkD0',
-            dueCards: 5,
-            lastStudied: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-            id: 'col_3',
-            name: 'French Basics',
-            emoji: '🇫🇷',
-            cardCount: 45,
-            mastered: 12,
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAmt0u34iTGbVdGqhJvU90Alz4Ijlnmkse_ML-y9-IXbvoqWMq0AYqcPL2KFnedkx5qXpvGOamFVE59pKcKFo30v73IXIJDy067J_VobCisyHpK_kUBuqNFfVlm650Fs9oBT0cYTJv2kbdYywNbZrK9X_NnO0cL6Xt-MdbHznHO7p5ouhJfeiLUj5LWLGJ7PD_29o_kzM0ZCiJcMUbDMdrEuEY6xmuU2vPiAWtTTSysdU2Jpb-hOALtRw8mj_wCG5YW73M9MldScNJY',
-            dueCards: 0,
-            lastStudied: new Date(Date.now() - 172800000).toISOString()
-        },
-        {
-            id: 'col_4',
-            name: 'Business English',
-            emoji: '💼',
-            cardCount: 200,
-            mastered: 0,
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCfArr_FYy3x75Pm0TSHTJFpCuI2-c0sJFQ7cq_3oi9wxmq-p8V9Bz3PHblKbaLCa11KydAYkJ4vIiqC0Ex1qMetEEaZJe1x4i7Btd6BeRuKGym5C6AnkwYyUTuu8acreyidiYEdx1w3cqH_aeYk14-RlqXbFuV4XqWf_WofNBhzIh19LK_gO7Ghy3AqAtkzAouYl80p1nwMKwqo3FLEj0kwd9eMjWk6sxNsB0nKmatfBgV1L8SMs-jwSWqOzcpxb80Ee8WhHWY2_V6',
-            dueCards: 0,
-            lastStudied: null
-        }
-    ],
+    // Default collections (empty for new users)
+    defaultCollections: [],
 
     // Default flashcards
-    defaultCards: [
-        {
-            id: 'card_1',
-            collectionId: 'col_1',
-            front: 'Hablar',
-            back: 'To speak',
-            reading: 'ah-BLAR',
-            example: 'Yo hablo español.',
-            exampleTranslation: 'I speak Spanish.',
-            image: null,
-            audio: null,
-            difficulty: 2, // 1-5
-            nextReview: new Date().toISOString(),
-            lastReview: null,
-            interval: 1,
-            easeFactor: 2.5,
-            reviewCount: 0
-        },
-        {
-            id: 'card_2',
-            collectionId: 'col_1',
-            front: 'Comer',
-            back: 'To eat',
-            reading: 'ko-MER',
-            example: 'Me gusta comer pizza.',
-            exampleTranslation: 'I like to eat pizza.',
-            image: null,
-            audio: null,
-            difficulty: 1,
-            nextReview: new Date().toISOString(),
-            lastReview: null,
-            interval: 1,
-            easeFactor: 2.5,
-            reviewCount: 0
-        },
-        {
-            id: 'card_3',
-            collectionId: 'col_2',
-            front: '猫',
-            back: 'Cat',
-            reading: 'Neko',
-            example: 'The cat is sleeping on the mat.',
-            exampleTranslation: 'Neko wa matto no ue de nete imasu.',
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC3iuJBR1WOZ_84hq3h1rLycEAFaVJ6oj9oYYfGd7IDnpCR_K82GLn9B1zpeFIf7CLJkJhKR2fS0qpGCFTcaLNDWLEn6e4dpZ-cbqzFLbNYWVj7x6_CjlSwf5jjZSLQHhAHwcbHIciiU2uYMOXSQFG21q8tecoQdLY8QDAwez5EHBU5MO5IghZaKTcTteK1jFKPlyUe9PQXKbPn1ggx-JK8jmGw90mwq_q2rDUpdTczLPd7UHW17ayTy6YI-30wpOF7UQCwVI5mDL75',
-            audio: null,
-            difficulty: 1,
-            nextReview: new Date().toISOString(),
-            lastReview: null,
-            interval: 1,
-            easeFactor: 2.5,
-            reviewCount: 0
-        }
-    ],
+    defaultCards: [],
 
     // Generated dialogues storage
     defaultDialogues: [],
 
     // Initialize data store
-    init() {
-        // Check if first run
-        if (!localStorage.getItem('linguaflow_initialized')) {
-            this.reset();
+    async init() {
+        // Try to initialize Supabase
+        if (window.SupabaseService) {
+            const supabaseReady = await SupabaseService.init();
+            this.useSupabase = supabaseReady && SupabaseService.isAuthenticated();
         }
+
+        // If no Supabase or not authenticated, use localStorage
+        if (!this.useSupabase) {
+            if (!localStorage.getItem('linguaflow_initialized')) {
+                this.resetLocal();
+            }
+        }
+
         return this;
     },
 
-    // Reset to defaults
-    reset() {
+    // Check if using cloud storage
+    isCloudEnabled() {
+        return this.useSupabase;
+    },
+
+    // Reset localStorage to defaults
+    resetLocal() {
         localStorage.setItem('linguaflow_user', JSON.stringify(this.defaultUser));
         localStorage.setItem('linguaflow_collections', JSON.stringify(this.defaultCollections));
         localStorage.setItem('linguaflow_cards', JSON.stringify(this.defaultCards));
@@ -145,37 +69,131 @@ const DataStore = {
         localStorage.setItem('linguaflow_onboarded', 'false');
     },
 
-    // User methods
-    getUser() {
+    // Sync localStorage data to Supabase (for migration)
+    async syncToCloud() {
+        if (!this.useSupabase) return false;
+
+        try {
+            // Get local data
+            const localUser = JSON.parse(localStorage.getItem('linguaflow_user'));
+            const localCollections = JSON.parse(localStorage.getItem('linguaflow_collections')) || [];
+            const localCards = JSON.parse(localStorage.getItem('linguaflow_cards')) || [];
+
+            // Update profile
+            if (localUser) {
+                await SupabaseService.updateProfile({
+                    name: localUser.name,
+                    targetLanguage: localUser.targetLanguage,
+                    nativeLanguage: localUser.nativeLanguage,
+                    streak: localUser.streak,
+                    totalCardsLearned: localUser.totalCardsLearned,
+                    dailyGoal: localUser.dailyGoal,
+                    settings: localUser.settings,
+                    onboarded: true
+                });
+            }
+
+            // Migrate collections and cards
+            const collectionIdMap = {};
+            for (const col of localCollections) {
+                const newCol = await SupabaseService.addCollection({
+                    name: col.name,
+                    emoji: col.emoji,
+                    image: col.image
+                });
+                collectionIdMap[col.id] = newCol.id;
+            }
+
+            // Migrate cards
+            for (const card of localCards) {
+                const newCollectionId = collectionIdMap[card.collectionId];
+                if (newCollectionId) {
+                    await SupabaseService.addCard({
+                        ...card,
+                        collectionId: newCollectionId
+                    });
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Sync to cloud failed:', error);
+            return false;
+        }
+    },
+
+    // ==================== USER METHODS ====================
+
+    async getUser() {
+        if (this.useSupabase) {
+            const profile = await SupabaseService.getProfile();
+            return profile || this.defaultUser;
+        }
         return JSON.parse(localStorage.getItem('linguaflow_user')) || this.defaultUser;
     },
 
-    updateUser(updates) {
-        const user = this.getUser();
+    // Sync version for places that can't use async
+    getUserSync() {
+        return JSON.parse(localStorage.getItem('linguaflow_user')) || this.defaultUser;
+    },
+
+    async updateUser(updates) {
+        if (this.useSupabase) {
+            const updated = await SupabaseService.updateProfile(updates);
+            // Also update local cache
+            const local = this.getUserSync();
+            localStorage.setItem('linguaflow_user', JSON.stringify({ ...local, ...updates }));
+            return updated;
+        }
+        const user = this.getUserSync();
         const updated = { ...user, ...updates };
         localStorage.setItem('linguaflow_user', JSON.stringify(updated));
         return updated;
     },
 
     isOnboarded() {
+        if (this.useSupabase) {
+            // Check localStorage cache first for faster response
+            const cached = localStorage.getItem('linguaflow_onboarded');
+            if (cached === 'true') return true;
+        }
         return localStorage.getItem('linguaflow_onboarded') === 'true';
     },
 
-    setOnboarded(value = true) {
+    async setOnboarded(value = true) {
         localStorage.setItem('linguaflow_onboarded', value.toString());
+        if (this.useSupabase) {
+            await SupabaseService.updateProfile({ onboarded: value });
+        }
     },
 
-    // Collections methods
-    getCollections() {
+    // ==================== COLLECTIONS METHODS ====================
+
+    async getCollections() {
+        if (this.useSupabase) {
+            return await SupabaseService.getCollections();
+        }
         return JSON.parse(localStorage.getItem('linguaflow_collections')) || [];
     },
 
-    getCollection(id) {
-        return this.getCollections().find(c => c.id === id);
+    // Sync version
+    getCollectionsSync() {
+        return JSON.parse(localStorage.getItem('linguaflow_collections')) || [];
     },
 
-    addCollection(collection) {
-        const collections = this.getCollections();
+    async getCollection(id) {
+        if (this.useSupabase) {
+            return await SupabaseService.getCollection(id);
+        }
+        return this.getCollectionsSync().find(c => c.id === id);
+    },
+
+    async addCollection(collection) {
+        if (this.useSupabase) {
+            return await SupabaseService.addCollection(collection);
+        }
+
+        const collections = this.getCollectionsSync();
         const newCollection = {
             id: 'col_' + Date.now(),
             cardCount: 0,
@@ -190,8 +208,12 @@ const DataStore = {
         return newCollection;
     },
 
-    updateCollection(id, updates) {
-        const collections = this.getCollections();
+    async updateCollection(id, updates) {
+        if (this.useSupabase) {
+            return await SupabaseService.updateCollection(id, updates);
+        }
+
+        const collections = this.getCollectionsSync();
         const index = collections.findIndex(c => c.id === id);
         if (index !== -1) {
             collections[index] = { ...collections[index], ...updates };
@@ -201,16 +223,26 @@ const DataStore = {
         return null;
     },
 
-    deleteCollection(id) {
-        const collections = this.getCollections().filter(c => c.id !== id);
+    async deleteCollection(id) {
+        if (this.useSupabase) {
+            return await SupabaseService.deleteCollection(id);
+        }
+
+        const collections = this.getCollectionsSync().filter(c => c.id !== id);
         localStorage.setItem('linguaflow_collections', JSON.stringify(collections));
         // Also delete associated cards
-        const cards = this.getCards().filter(c => c.collectionId !== id);
+        const cards = this.getCardsSync().filter(c => c.collectionId !== id);
         localStorage.setItem('linguaflow_cards', JSON.stringify(cards));
+        return true;
     },
 
-    // Cards methods
-    getCards(collectionId = null) {
+    // ==================== CARDS METHODS ====================
+
+    async getCards(collectionId = null) {
+        if (this.useSupabase) {
+            return await SupabaseService.getCards(collectionId);
+        }
+
         const cards = JSON.parse(localStorage.getItem('linguaflow_cards')) || [];
         if (collectionId) {
             return cards.filter(c => c.collectionId === collectionId);
@@ -218,24 +250,48 @@ const DataStore = {
         return cards;
     },
 
-    getCard(id) {
-        return this.getCards().find(c => c.id === id);
+    // Sync version
+    getCardsSync(collectionId = null) {
+        const cards = JSON.parse(localStorage.getItem('linguaflow_cards')) || [];
+        if (collectionId) {
+            return cards.filter(c => c.collectionId === collectionId);
+        }
+        return cards;
     },
 
-    getDueCards(collectionId = null) {
+    async getCard(id) {
+        if (this.useSupabase) {
+            return await SupabaseService.getCard(id);
+        }
+        return this.getCardsSync().find(c => c.id === id);
+    },
+
+    async getDueCards(collectionId = null) {
+        if (this.useSupabase) {
+            return await SupabaseService.getDueCards(collectionId);
+        }
+
         const now = new Date();
-        return this.getCards(collectionId).filter(card => {
+        return this.getCardsSync(collectionId).filter(card => {
             const nextReview = new Date(card.nextReview);
             return nextReview <= now;
         });
     },
 
     getTotalDueCards() {
-        return this.getDueCards().length;
+        const now = new Date();
+        return this.getCardsSync().filter(card => {
+            const nextReview = new Date(card.nextReview);
+            return nextReview <= now;
+        }).length;
     },
 
-    addCard(card) {
-        const cards = this.getCards();
+    async addCard(card) {
+        if (this.useSupabase) {
+            return await SupabaseService.addCard(card);
+        }
+
+        const cards = this.getCardsSync();
         const newCard = {
             id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             difficulty: 2,
@@ -252,9 +308,9 @@ const DataStore = {
 
         // Update collection card count
         if (card.collectionId) {
-            const collection = this.getCollection(card.collectionId);
+            const collection = this.getCollectionsSync().find(c => c.id === card.collectionId);
             if (collection) {
-                this.updateCollection(card.collectionId, {
+                await this.updateCollection(card.collectionId, {
                     cardCount: collection.cardCount + 1,
                     dueCards: collection.dueCards + 1
                 });
@@ -264,8 +320,12 @@ const DataStore = {
         return newCard;
     },
 
-    updateCard(id, updates) {
-        const cards = this.getCards();
+    async updateCard(id, updates) {
+        if (this.useSupabase) {
+            return await SupabaseService.updateCard(id, updates);
+        }
+
+        const cards = this.getCardsSync();
         const index = cards.findIndex(c => c.id === id);
         if (index !== -1) {
             cards[index] = { ...cards[index], ...updates };
@@ -275,8 +335,12 @@ const DataStore = {
         return null;
     },
 
-    deleteCard(id) {
-        const cards = this.getCards();
+    async deleteCard(id) {
+        if (this.useSupabase) {
+            return await SupabaseService.deleteCard(id);
+        }
+
+        const cards = this.getCardsSync();
         const card = cards.find(c => c.id === id);
         if (card) {
             const filtered = cards.filter(c => c.id !== id);
@@ -284,9 +348,9 @@ const DataStore = {
 
             // Update collection card count
             if (card.collectionId) {
-                const collection = this.getCollection(card.collectionId);
+                const collection = this.getCollectionsSync().find(c => c.id === card.collectionId);
                 if (collection) {
-                    this.updateCollection(card.collectionId, {
+                    await this.updateCollection(card.collectionId, {
                         cardCount: Math.max(0, collection.cardCount - 1)
                     });
                 }
@@ -296,17 +360,13 @@ const DataStore = {
         return false;
     },
 
-    deleteCollection(id) {
-        const collections = this.getCollections();
-        const filtered = collections.filter(c => c.id !== id);
-        localStorage.setItem('linguaflow_collections', JSON.stringify(filtered));
-        return true;
-    },
-
     // Spaced repetition algorithm (SM-2 variant)
-    reviewCard(id, quality) {
+    async reviewCard(id, quality) {
         // quality: 0 = again, 1 = hard, 2 = good, 3 = easy
-        const card = this.getCard(id);
+        const card = this.useSupabase
+            ? await SupabaseService.getCard(id)
+            : this.getCardsSync().find(c => c.id === id);
+
         if (!card) return null;
 
         let { interval, easeFactor, reviewCount } = card;
@@ -342,7 +402,7 @@ const DataStore = {
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + interval);
 
-        return this.updateCard(id, {
+        return await this.updateCard(id, {
             interval,
             easeFactor,
             reviewCount: reviewCount + 1,
@@ -351,13 +411,25 @@ const DataStore = {
         });
     },
 
-    // Dialogue methods
-    getDialogues() {
+    // ==================== DIALOGUES METHODS ====================
+
+    async getDialogues() {
+        if (this.useSupabase) {
+            return await SupabaseService.getDialogues();
+        }
         return JSON.parse(localStorage.getItem('linguaflow_dialogues')) || [];
     },
 
-    addDialogue(dialogue) {
-        const dialogues = this.getDialogues();
+    getDialoguesSync() {
+        return JSON.parse(localStorage.getItem('linguaflow_dialogues')) || [];
+    },
+
+    async addDialogue(dialogue) {
+        if (this.useSupabase) {
+            return await SupabaseService.addDialogue(dialogue);
+        }
+
+        const dialogues = this.getDialoguesSync();
         const newDialogue = {
             id: 'dlg_' + Date.now(),
             createdAt: new Date().toISOString(),
@@ -368,19 +440,19 @@ const DataStore = {
         return newDialogue;
     },
 
-    // Statistics
-    getStats() {
-        const user = this.getUser();
-        const collections = this.getCollections();
-        const cards = this.getCards();
+    // ==================== STATISTICS ====================
+
+    async getStats() {
+        const user = this.useSupabase ? await this.getUser() : this.getUserSync();
+        const collections = this.useSupabase ? await this.getCollections() : this.getCollectionsSync();
         const totalDue = this.getTotalDueCards();
 
-        const totalMastered = collections.reduce((sum, c) => sum + c.mastered, 0);
-        const totalCards = collections.reduce((sum, c) => sum + c.cardCount, 0);
+        const totalMastered = collections.reduce((sum, c) => sum + (c.mastered || 0), 0);
+        const totalCards = collections.reduce((sum, c) => sum + (c.cardCount || 0), 0);
 
         return {
-            streak: user.streak,
-            totalCardsLearned: user.totalCardsLearned,
+            streak: user.streak || 0,
+            totalCardsLearned: user.totalCardsLearned || 0,
             totalCollections: collections.length,
             totalCards,
             totalMastered,
@@ -390,5 +462,5 @@ const DataStore = {
     }
 };
 
-// Initialize on load
-DataStore.init();
+// Note: init() is now async and called from app.js
+window.DataStore = DataStore;

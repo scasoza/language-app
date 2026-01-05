@@ -6,18 +6,87 @@ const app = {
     currentScreen: null,
     history: [],
     screensWithNav: ['home', 'collections', 'dialogue-settings', 'settings'],
+    isInitialized: false,
 
-    init() {
-        // Check if onboarded
-        if (DataStore.isOnboarded()) {
-            this.navigate('home');
-        } else {
-            this.navigate('onboarding');
+    async init() {
+        // Show loading screen
+        this.showLoadingScreen();
+
+        try {
+            // Initialize data store (handles Supabase init)
+            await DataStore.init();
+
+            // Check if Supabase is configured but user not authenticated
+            const supabaseConfigured = window.SUPABASE_URL && window.SUPABASE_ANON_KEY;
+            const isAuthenticated = window.SupabaseService?.isAuthenticated();
+
+            if (supabaseConfigured && !isAuthenticated) {
+                // Show auth screen
+                this.hideLoadingScreen();
+                this.navigate('auth');
+            } else if (!DataStore.isOnboarded()) {
+                // Show onboarding
+                this.hideLoadingScreen();
+                this.navigate('onboarding');
+            } else {
+                // Go to home
+                this.hideLoadingScreen();
+                this.navigate('home');
+            }
+
+            // Apply dark mode from settings
+            const user = DataStore.getUserSync();
+            document.documentElement.classList.toggle('dark', user?.settings?.darkMode ?? true);
+
+            // Listen for auth changes
+            window.addEventListener('auth:signin', async () => {
+                await DataStore.init();
+                if (!DataStore.isOnboarded()) {
+                    this.navigate('onboarding');
+                } else {
+                    this.navigate('home');
+                }
+            });
+
+            window.addEventListener('auth:signout', () => {
+                DataStore.useSupabase = false;
+                this.navigate('auth');
+            });
+
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('App init failed:', error);
+            this.hideLoadingScreen();
+            // Fallback to localStorage mode
+            DataStore.useSupabase = false;
+            if (!DataStore.isOnboarded()) {
+                this.navigate('onboarding');
+            } else {
+                this.navigate('home');
+            }
         }
+    },
 
-        // Apply dark mode from settings
-        const user = DataStore.getUser();
-        document.documentElement.classList.toggle('dark', user.settings.darkMode);
+    showLoadingScreen() {
+        const appEl = document.getElementById('app');
+        const loader = document.createElement('div');
+        loader.id = 'app-loader';
+        loader.className = 'fixed inset-0 z-[999] bg-background-dark flex flex-col items-center justify-center';
+        loader.innerHTML = `
+            <div class="size-20 rounded-3xl bg-primary/20 flex items-center justify-center mb-4 animate-pulse">
+                <span class="text-5xl">🌍</span>
+            </div>
+            <div class="spinner"></div>
+        `;
+        appEl.appendChild(loader);
+    },
+
+    hideLoadingScreen() {
+        const loader = document.getElementById('app-loader');
+        if (loader) {
+            loader.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+            setTimeout(() => loader.remove(), 300);
+        }
     },
 
     navigate(screenId, addToHistory = true) {
@@ -46,6 +115,9 @@ const app = {
 
     renderScreen(screenId) {
         switch (screenId) {
+            case 'auth':
+                AuthScreen.render();
+                break;
             case 'onboarding':
                 OnboardingScreen.render();
                 break;
