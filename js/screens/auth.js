@@ -204,6 +204,18 @@ const AuthScreen = {
 
     async handleSignIn(event) {
         event.preventDefault();
+
+        // Check if Supabase is configured
+        if (!SupabaseService.initialized && !SupabaseService.client) {
+            // Try to initialize first
+            await SupabaseService.init();
+            if (!SupabaseService.client) {
+                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.render();
+                return;
+            }
+        }
+
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -217,14 +229,24 @@ const AuthScreen = {
             app.navigate('home');
         } catch (error) {
             this.error = error.message || 'Failed to sign in';
-            this.render();
-        } finally {
             this.isLoading = false;
+            this.render();
         }
     },
 
     async handleSignUp(event) {
         event.preventDefault();
+
+        // Check if Supabase is configured
+        if (!SupabaseService.initialized && !SupabaseService.client) {
+            await SupabaseService.init();
+            if (!SupabaseService.client) {
+                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.render();
+                return;
+            }
+        }
+
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -241,13 +263,22 @@ const AuthScreen = {
             this.setMode('signin');
         } catch (error) {
             this.error = error.message || 'Failed to create account';
-            this.render();
-        } finally {
             this.isLoading = false;
+            this.render();
         }
     },
 
     async handleGoogleSignIn() {
+        // Check if Supabase is configured
+        if (!SupabaseService.initialized && !SupabaseService.client) {
+            await SupabaseService.init();
+            if (!SupabaseService.client) {
+                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.render();
+                return;
+            }
+        }
+
         try {
             await SupabaseService.signInWithGoogle();
             // Will redirect to Google
@@ -259,6 +290,17 @@ const AuthScreen = {
 
     async handleReset(event) {
         event.preventDefault();
+
+        // Check if Supabase is configured
+        if (!SupabaseService.initialized && !SupabaseService.client) {
+            await SupabaseService.init();
+            if (!SupabaseService.client) {
+                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.render();
+                return;
+            }
+        }
+
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -271,9 +313,8 @@ const AuthScreen = {
             this.setMode('signin');
         } catch (error) {
             this.error = error.message || 'Failed to send reset email';
-            this.render();
-        } finally {
             this.isLoading = false;
+            this.render();
         }
     },
 

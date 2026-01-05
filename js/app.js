@@ -16,8 +16,10 @@ const app = {
             // Initialize data store (handles Supabase init)
             await DataStore.init();
 
-            // Check if Supabase is configured but user not authenticated
-            const supabaseConfigured = window.SUPABASE_URL && window.SUPABASE_ANON_KEY;
+            // Check if Supabase is properly configured (non-empty values)
+            const supabaseUrl = window.SUPABASE_URL || '';
+            const supabaseKey = window.SUPABASE_ANON_KEY || '';
+            const supabaseConfigured = supabaseUrl.length > 10 && supabaseKey.length > 10;
             const isAuthenticated = window.SupabaseService?.isAuthenticated();
 
             if (supabaseConfigured && !isAuthenticated) {
@@ -25,7 +27,7 @@ const app = {
                 this.hideLoadingScreen();
                 this.navigate('auth');
             } else if (!DataStore.isOnboarded()) {
-                // Show onboarding
+                // Show onboarding (offline mode or authenticated)
                 this.hideLoadingScreen();
                 this.navigate('onboarding');
             } else {
