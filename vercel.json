@@ -3,6 +3,8 @@
   "version": 2,
   "name": "linguaflow",
   "public": true,
+  "buildCommand": null,
+  "outputDirectory": ".",
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
@@ -39,7 +41,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api|_next|icons|js|css|images|manifest.json|sw.js|favicon.ico).*)",
+      "source": "/((?!api|icons|js|manifest.json|sw.js|favicon.ico).*)",
       "destination": "/index.html"
     }
   ]
