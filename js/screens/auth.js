@@ -41,13 +41,6 @@ const AuthScreen = {
                         </div>
                     ` : ''}
 
-                    <!-- Or continue without account -->
-                    <div class="mt-8 text-center">
-                        <p class="text-gray-500 text-sm mb-3">Or continue without an account</p>
-                        <button onclick="AuthScreen.continueAsGuest()" class="text-primary font-medium hover:underline">
-                            Use Offline Mode
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Footer -->
@@ -210,7 +203,7 @@ const AuthScreen = {
             // Try to initialize first
             await SupabaseService.init();
             if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.error = 'Backend not configured. Please contact support.';
                 this.render();
                 return;
             }
@@ -241,7 +234,7 @@ const AuthScreen = {
         if (!SupabaseService.initialized && !SupabaseService.client) {
             await SupabaseService.init();
             if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.error = 'Backend not configured. Please contact support.';
                 this.render();
                 return;
             }
@@ -273,7 +266,7 @@ const AuthScreen = {
         if (!SupabaseService.initialized && !SupabaseService.client) {
             await SupabaseService.init();
             if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.error = 'Backend not configured. Please contact support.';
                 this.render();
                 return;
             }
@@ -295,7 +288,7 @@ const AuthScreen = {
         if (!SupabaseService.initialized && !SupabaseService.client) {
             await SupabaseService.init();
             if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Use "Offline Mode" or contact support.';
+                this.error = 'Backend not configured. Please contact support.';
                 this.render();
                 return;
             }
@@ -315,21 +308,6 @@ const AuthScreen = {
             this.error = error.message || 'Failed to send reset email';
             this.isLoading = false;
             this.render();
-        }
-    },
-
-    continueAsGuest() {
-        // Skip auth and use localStorage
-        DataStore.useSupabase = false;
-        if (!localStorage.getItem('linguaflow_initialized')) {
-            DataStore.resetLocal();
-        }
-
-        // Check if user needs onboarding
-        if (!DataStore.isOnboarded()) {
-            app.navigate('onboarding');
-        } else {
-            app.navigate('home');
         }
     }
 };
