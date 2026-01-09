@@ -364,7 +364,7 @@ const app = {
             this.showLoadingOverlay('Creating your collection...', `Generating vocabulary for: ${topic}`);
 
             try {
-                const user = DataStore.getUser();
+                const user = await DataStore.getUser();
                 const result = await GeminiService.generateCollection({
                     topic,
                     targetLanguage: user.targetLanguage,

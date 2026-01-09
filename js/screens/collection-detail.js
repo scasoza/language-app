@@ -284,7 +284,7 @@ const CollectionDetailScreen = {
         app.showLoadingOverlay('Generating cards...', 'Creating flashcards with AI');
 
         try {
-            const user = DataStore.getUser();
+            const user = DataStore.getUserSync();
             const result = await GeminiService.generateCollection({
                 topic: collection.name,
                 targetLanguage: user.targetLanguage,
