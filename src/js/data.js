@@ -237,7 +237,7 @@ const DataStore = {
     addCard(card) {
         const cards = this.getCards();
         const newCard = {
-            id: 'card_' + Date.now(),
+            id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             difficulty: 2,
             nextReview: new Date().toISOString(),
             lastReview: null,
@@ -273,6 +273,34 @@ const DataStore = {
             return cards[index];
         }
         return null;
+    },
+
+    deleteCard(id) {
+        const cards = this.getCards();
+        const card = cards.find(c => c.id === id);
+        if (card) {
+            const filtered = cards.filter(c => c.id !== id);
+            localStorage.setItem('linguaflow_cards', JSON.stringify(filtered));
+
+            // Update collection card count
+            if (card.collectionId) {
+                const collection = this.getCollection(card.collectionId);
+                if (collection) {
+                    this.updateCollection(card.collectionId, {
+                        cardCount: Math.max(0, collection.cardCount - 1)
+                    });
+                }
+            }
+            return true;
+        }
+        return false;
+    },
+
+    deleteCollection(id) {
+        const collections = this.getCollections();
+        const filtered = collections.filter(c => c.id !== id);
+        localStorage.setItem('linguaflow_collections', JSON.stringify(filtered));
+        return true;
     },
 
     // Spaced repetition algorithm (SM-2 variant)
