@@ -66,16 +66,6 @@ const OnboardingScreen = {
                 <button onclick="OnboardingScreen.complete()" class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 bg-primary text-background-dark text-lg font-bold leading-normal tracking-wide shadow-[0_4px_14px_rgba(13,242,128,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-transform">
                     <span class="truncate">Get Started</span>
                 </button>
-
-                <!-- Secondary Action -->
-                <button onclick="OnboardingScreen.showLogin()" class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 bg-transparent border border-gray-700 text-white text-base font-semibold leading-normal tracking-wide hover:bg-white/5 transition-colors">
-                    <span class="truncate">I already have an account</span>
-                </button>
-
-                <!-- Tertiary Action -->
-                <button onclick="OnboardingScreen.skipToGuest()" class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-transparent text-gray-400 text-sm font-medium leading-normal hover:text-white transition-colors mt-2">
-                    <span class="truncate">Skip to Guest Mode</span>
-                </button>
             </div>
 
             <!-- iOS Home Indicator Safe Area -->
@@ -115,15 +105,6 @@ const OnboardingScreen = {
     },
 
     complete() {
-        DataStore.setOnboarded(true);
-        app.navigate('home');
-    },
-
-    showLogin() {
-        app.showToast('Login feature coming soon!', 'info');
-    },
-
-    skipToGuest() {
         DataStore.setOnboarded(true);
         app.navigate('home');
     }

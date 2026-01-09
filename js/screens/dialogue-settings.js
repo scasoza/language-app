@@ -236,8 +236,8 @@ const DialogueSettingsScreen = {
                 vocabulary: this.settings.vocabulary,
                 complexity,
                 length: this.settings.length,
-                targetLanguage: DataStore.getUser().targetLanguage,
-                nativeLanguage: DataStore.getUser().nativeLanguage
+                targetLanguage: DataStore.getUserSync().targetLanguage,
+                nativeLanguage: DataStore.getUserSync().nativeLanguage
             });
 
             if (dialogue) {

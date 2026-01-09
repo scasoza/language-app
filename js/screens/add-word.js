@@ -23,8 +23,8 @@ const AddWordScreen = {
     audioChunks: [],
 
     render() {
-        const user = DataStore.getUser();
-        const collections = DataStore.getCollections();
+        const user = DataStore.getUserSync();
+        const collections = DataStore.getCollectionsSync();
 
         // Apply preset collection if set
         if (this.presetCollectionId && !this.formData.collectionId) {
@@ -395,7 +395,7 @@ const AddWordScreen = {
         this.render();
 
         try {
-            const user = DataStore.getUser();
+            const user = DataStore.getUserSync();
             const cards = await GeminiService.generateFlashcards({
                 text: 'Identify the main subject or text in this image and create vocabulary',
                 image: this.formData.image,
@@ -523,7 +523,7 @@ const AddWordScreen = {
         this.render();
 
         try {
-            const user = DataStore.getUser();
+            const user = DataStore.getUserSync();
             const cards = await GeminiService.generateFlashcards({
                 text: this.formData.front,
                 targetLanguage: user.targetLanguage,
