@@ -2,25 +2,8 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" name="viewport"/>
+    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
     <title>LinguaFlow - AI Language Learning</title>
-
-    <!-- PWA Meta Tags -->
-    <meta name="description" content="Master any language with AI-powered flashcards and dialogue practice">
-    <meta name="theme-color" content="#102219">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="LinguaFlow">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-
-    <!-- App Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
 
     <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -138,13 +121,8 @@
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
     <div id="app" class="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark">
 
-        <!-- Auth Screen -->
-        <div id="screen-auth" class="screen flex-col h-screen">
-            <!-- Content loaded dynamically -->
-        </div>
-
         <!-- Onboarding Screen -->
-        <div id="screen-onboarding" class="screen flex-col h-screen">
+        <div id="screen-onboarding" class="screen active flex-col h-screen">
             <!-- Content loaded dynamically -->
         </div>
 
@@ -225,14 +203,9 @@
         </div>
     </div>
 
-    <!-- Supabase Configuration (loaded from Vercel env vars) -->
-    <script src="/api/config" onerror="console.log('Config not available, using localStorage mode')"></script>
-
     <!-- Load App Scripts -->
-    <script src="js/supabase.js"></script>
     <script src="js/data.js"></script>
     <script src="js/gemini-service.js"></script>
-    <script src="js/screens/auth.js"></script>
     <script src="js/screens/onboarding.js"></script>
     <script src="js/screens/home.js"></script>
     <script src="js/screens/collections.js"></script>
@@ -243,72 +216,5 @@
     <script src="js/screens/dialogue-practice.js"></script>
     <script src="js/screens/settings.js"></script>
     <script src="js/app.js"></script>
-
-    <!-- Service Worker Registration -->
-    <script>
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Use relative path for GitHub Pages compatibility
-                const swPath = new URL('sw.js', window.location.href).href;
-                navigator.serviceWorker.register(swPath)
-                    .then((registration) => {
-                        console.log('SW registered:', registration.scope);
-
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New update available
-                                    if (confirm('New version available! Reload to update?')) {
-                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        window.location.reload();
-                                    }
-                                }
-                            });
-                        });
-                    })
-                    .catch((error) => {
-                        console.log('SW registration failed:', error);
-                    });
-            });
-        }
-
-        // Handle install prompt for PWA
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-
-            // Show install button in settings if available
-            window.pwaInstallPrompt = deferredPrompt;
-        });
-
-        // Capacitor bridge (loaded dynamically when in native app)
-        if (window.Capacitor) {
-            // Initialize Capacitor plugins
-            document.addEventListener('DOMContentLoaded', async () => {
-                const { SplashScreen } = await import('@capacitor/splash-screen');
-                const { StatusBar, Style } = await import('@capacitor/status-bar');
-                const { Keyboard } = await import('@capacitor/keyboard');
-
-                // Hide splash screen
-                await SplashScreen.hide();
-
-                // Configure status bar
-                await StatusBar.setStyle({ style: Style.Dark });
-                await StatusBar.setBackgroundColor({ color: '#102219' });
-
-                // Keyboard handling
-                Keyboard.addListener('keyboardWillShow', () => {
-                    document.body.classList.add('keyboard-open');
-                });
-                Keyboard.addListener('keyboardWillHide', () => {
-                    document.body.classList.remove('keyboard-open');
-                });
-            });
-        }
-    </script>
 </body>
 </html>

@@ -420,7 +420,7 @@ const DialoguePracticeScreen = {
         app.showToast('Getting explanation...', 'info');
 
         try {
-            const explanation = await GeminiService.explainWord(word, DataStore.getUserSync().targetLanguage);
+            const explanation = await GeminiService.explainWord(word, DataStore.getUser().targetLanguage);
 
             app.showModal(`
                 <div class="flex items-center justify-between mb-4">

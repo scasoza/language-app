@@ -6,64 +6,18 @@ const app = {
     currentScreen: null,
     history: [],
     screensWithNav: ['home', 'collections', 'dialogue-settings', 'settings'],
-    isInitialized: false,
 
-    async init() {
-        // Show loading screen
-        this.showLoadingScreen();
-
-        try {
-            // Initialize data store (handles Supabase init)
-            await DataStore.init();
-
-            if (!DataStore.isOnboarded()) {
-                // Show onboarding
-                this.hideLoadingScreen();
-                this.navigate('onboarding');
-            } else {
-                // Go to home
-                this.hideLoadingScreen();
-                this.navigate('home');
-            }
-
-            // Apply dark mode from settings
-            const user = DataStore.getUserSync();
-            document.documentElement.classList.toggle('dark', user?.settings?.darkMode ?? true);
-
-            this.isInitialized = true;
-        } catch (error) {
-            console.error('App init failed:', error);
-            this.hideLoadingScreen();
-            // Fallback to localStorage mode
-            DataStore.useSupabase = false;
-            if (!DataStore.isOnboarded()) {
-                this.navigate('onboarding');
-            } else {
-                this.navigate('home');
-            }
+    init() {
+        // Check if onboarded
+        if (DataStore.isOnboarded()) {
+            this.navigate('home');
+        } else {
+            this.navigate('onboarding');
         }
-    },
 
-    showLoadingScreen() {
-        const appEl = document.getElementById('app');
-        const loader = document.createElement('div');
-        loader.id = 'app-loader';
-        loader.className = 'fixed inset-0 z-[999] bg-background-dark flex flex-col items-center justify-center';
-        loader.innerHTML = `
-            <div class="size-20 rounded-3xl bg-primary/20 flex items-center justify-center mb-4 animate-pulse">
-                <span class="text-5xl">🌍</span>
-            </div>
-            <div class="spinner"></div>
-        `;
-        appEl.appendChild(loader);
-    },
-
-    hideLoadingScreen() {
-        const loader = document.getElementById('app-loader');
-        if (loader) {
-            loader.classList.add('opacity-0', 'transition-opacity', 'duration-300');
-            setTimeout(() => loader.remove(), 300);
-        }
+        // Apply dark mode from settings
+        const user = DataStore.getUser();
+        document.documentElement.classList.toggle('dark', user.settings.darkMode);
     },
 
     navigate(screenId, addToHistory = true) {
@@ -92,9 +46,6 @@ const app = {
 
     renderScreen(screenId) {
         switch (screenId) {
-            case 'auth':
-                AuthScreen.render();
-                break;
             case 'onboarding':
                 OnboardingScreen.render();
                 break;
@@ -185,24 +136,7 @@ const app = {
         this.navigate('collection-detail');
     },
 
-    // Collection cover image options
-    collectionImages: [
-        'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400&h=300&fit=crop', // Books
-        'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop', // Study
-        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=300&fit=crop', // Tech
-        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop', // Food
-        'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=400&h=300&fit=crop', // Travel
-        'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop', // Restaurant
-        'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop', // People
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop', // Portrait
-    ],
-    selectedCollectionImage: null,
-    customCollectionImage: null,
-
     showCreateCollectionModal() {
-        this.selectedCollectionImage = this.collectionImages[0];
-        this.customCollectionImage = null;
-
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">Create Collection</h3>
@@ -212,41 +146,18 @@ const app = {
             </div>
 
             <div class="space-y-4">
-                <!-- Cover Image Selection -->
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">Cover Image</label>
-                    <div id="collection-image-grid" class="grid grid-cols-4 gap-2 mb-2">
-                        ${this.collectionImages.map((img, i) => `
-                            <button onclick="app.selectCollectionImage('${img}')" class="aspect-square rounded-lg overflow-hidden border-2 ${i === 0 ? 'border-primary' : 'border-transparent'} hover:border-primary/50 transition-all">
-                                <img src="${img}" class="w-full h-full object-cover" />
-                            </button>
-                        `).join('')}
-                    </div>
-                    <button onclick="app.uploadCollectionImage()" class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-gray-300 dark:border-white/20 hover:border-primary text-sm text-gray-500 dark:text-gray-400 transition-colors">
-                        <span class="material-symbols-outlined text-lg">add_photo_alternate</span>
-                        Upload Custom Image
-                    </button>
-                    <div id="custom-image-preview" class="hidden mt-2 relative">
-                        <img id="custom-image-img" class="w-full h-24 object-cover rounded-lg" />
-                        <button onclick="app.removeCustomImage()" class="absolute top-1 right-1 size-6 rounded-full bg-black/50 flex items-center justify-center text-white">
-                            <span class="material-symbols-outlined text-sm">close</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-2">
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Name</label>
-                        <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji</label>
-                        <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 text-center text-xl" />
-                    </div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Collection Name</label>
+                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div>
-                    <p class="text-xs text-gray-400 mb-2">Or generate with AI:</p>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji</label>
+                    <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                </div>
+
+                <div class="pt-2">
+                    <p class="text-sm text-gray-400 mb-3">Or generate with AI:</p>
                     <div>
                         <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Topic</label>
                         <input type="text" id="collection-topic" placeholder="e.g., Food vocabulary, Travel phrases" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
@@ -266,76 +177,6 @@ const app = {
         `);
     },
 
-    selectCollectionImage(url) {
-        this.selectedCollectionImage = url;
-        this.customCollectionImage = null;
-
-        // Update UI
-        const grid = document.getElementById('collection-image-grid');
-        if (grid) {
-            grid.querySelectorAll('button').forEach(btn => {
-                const img = btn.querySelector('img');
-                if (img && img.src === url) {
-                    btn.classList.add('border-primary');
-                    btn.classList.remove('border-transparent');
-                } else {
-                    btn.classList.remove('border-primary');
-                    btn.classList.add('border-transparent');
-                }
-            });
-        }
-
-        // Hide custom preview
-        const preview = document.getElementById('custom-image-preview');
-        if (preview) preview.classList.add('hidden');
-    },
-
-    uploadCollectionImage() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.customCollectionImage = e.target.result;
-                    this.selectedCollectionImage = null;
-
-                    // Show custom preview
-                    const preview = document.getElementById('custom-image-preview');
-                    const img = document.getElementById('custom-image-img');
-                    if (preview && img) {
-                        img.src = e.target.result;
-                        preview.classList.remove('hidden');
-                    }
-
-                    // Deselect grid images
-                    const grid = document.getElementById('collection-image-grid');
-                    if (grid) {
-                        grid.querySelectorAll('button').forEach(btn => {
-                            btn.classList.remove('border-primary');
-                            btn.classList.add('border-transparent');
-                        });
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    },
-
-    removeCustomImage() {
-        this.customCollectionImage = null;
-        this.selectedCollectionImage = this.collectionImages[0];
-
-        const preview = document.getElementById('custom-image-preview');
-        if (preview) preview.classList.add('hidden');
-
-        // Reselect first image
-        this.selectCollectionImage(this.collectionImages[0]);
-    },
-
     async createCollection(withAI = false) {
         const nameInput = document.getElementById('collection-name');
         const emojiInput = document.getElementById('collection-emoji');
@@ -344,9 +185,6 @@ const app = {
         const name = nameInput?.value?.trim();
         const emoji = emojiInput?.value?.trim() || '📚';
         const topic = topicInput?.value?.trim();
-
-        // Get selected image
-        const collectionImage = this.customCollectionImage || this.selectedCollectionImage || this.collectionImages[0];
 
         if (withAI) {
             if (!topic) {
@@ -360,11 +198,10 @@ const app = {
                 return;
             }
 
-            this.closeModal();
-            this.showLoadingOverlay('Creating your collection...', `Generating vocabulary for: ${topic}`);
+            this.showToast('Generating collection with AI...', 'info');
 
             try {
-                const user = await DataStore.getUser();
+                const user = DataStore.getUser();
                 const result = await GeminiService.generateCollection({
                     topic,
                     targetLanguage: user.targetLanguage,
@@ -372,11 +209,11 @@ const app = {
                     cardCount: 10
                 });
 
-                // Create collection with selected image
+                // Create collection
                 const collection = DataStore.addCollection({
                     name: result.name || topic,
                     emoji: result.emoji || emoji,
-                    image: collectionImage
+                    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
                 });
 
                 // Add cards
@@ -389,7 +226,7 @@ const app = {
                     });
                 }
 
-                this.hideLoadingOverlay();
+                this.closeModal();
                 this.showToast(`Created "${result.name}" with ${result.cards?.length || 0} cards!`, 'success');
 
                 // Refresh screen
@@ -399,7 +236,6 @@ const app = {
                     HomeScreen.render();
                 }
             } catch (error) {
-                this.hideLoadingOverlay();
                 this.showToast(error.message, 'error');
             }
         } else {
@@ -411,7 +247,7 @@ const app = {
             const collection = DataStore.addCollection({
                 name,
                 emoji,
-                image: collectionImage
+                image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
             });
 
             this.closeModal();

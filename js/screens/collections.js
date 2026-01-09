@@ -128,7 +128,7 @@ const CollectionsScreen = {
     },
 
     getFilteredCollections() {
-        let collections = DataStore.getCollectionsSync();
+        let collections = DataStore.getCollections();
 
         // Apply search filter
         if (this.searchQuery) {
