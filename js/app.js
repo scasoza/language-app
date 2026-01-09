@@ -16,18 +16,8 @@ const app = {
             // Initialize data store (handles Supabase init)
             await DataStore.init();
 
-            // Check if Supabase is properly configured (non-empty values)
-            const supabaseUrl = window.SUPABASE_URL || '';
-            const supabaseKey = window.SUPABASE_ANON_KEY || '';
-            const supabaseConfigured = supabaseUrl.length > 10 && supabaseKey.length > 10;
-            const isAuthenticated = window.SupabaseService?.isAuthenticated();
-
-            if (supabaseConfigured && !isAuthenticated) {
-                // Show auth screen
-                this.hideLoadingScreen();
-                this.navigate('auth');
-            } else if (!DataStore.isOnboarded()) {
-                // Show onboarding (offline mode or authenticated)
+            if (!DataStore.isOnboarded()) {
+                // Show onboarding
                 this.hideLoadingScreen();
                 this.navigate('onboarding');
             } else {
@@ -39,21 +29,6 @@ const app = {
             // Apply dark mode from settings
             const user = DataStore.getUserSync();
             document.documentElement.classList.toggle('dark', user?.settings?.darkMode ?? true);
-
-            // Listen for auth changes
-            window.addEventListener('auth:signin', async () => {
-                await DataStore.init();
-                if (!DataStore.isOnboarded()) {
-                    this.navigate('onboarding');
-                } else {
-                    this.navigate('home');
-                }
-            });
-
-            window.addEventListener('auth:signout', () => {
-                DataStore.useSupabase = false;
-                this.navigate('auth');
-            });
 
             this.isInitialized = true;
         } catch (error) {
