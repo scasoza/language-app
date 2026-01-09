@@ -100,10 +100,6 @@ const OnboardingScreen = {
                     <span class="truncate">Get Started</span>
                 </button>
 
-                <!-- Secondary Action -->
-                <button onclick="OnboardingScreen.skipToGuest()" class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-transparent text-gray-400 text-sm font-medium leading-normal hover:text-white transition-colors mt-2">
-                    <span class="truncate">Skip setup</span>
-                </button>
             </div>
         `;
 
@@ -260,12 +256,6 @@ const OnboardingScreen = {
         this.selectedLanguage = null;
         this.userName = '';
 
-        app.navigate('home');
-    },
-
-    skipToGuest() {
-        DataStore.setOnboarded(true);
-        this.currentStep = 0;
         app.navigate('home');
     }
 };

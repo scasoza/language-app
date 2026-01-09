@@ -4,8 +4,8 @@
 
 const SettingsScreen = {
     render() {
-        const user = DataStore.getUser();
-        const stats = DataStore.getStats();
+        const user = DataStore.getUserSync();
+        const stats = DataStore.getStatsSync();
         const apiConfigured = GeminiService.isConfigured();
 
         const container = document.getElementById('screen-settings');
@@ -183,14 +183,14 @@ const SettingsScreen = {
     },
 
     toggleSetting(setting) {
-        const user = DataStore.getUser();
+        const user = DataStore.getUserSync();
         const newSettings = { ...user.settings, [setting]: !user.settings[setting] };
         DataStore.updateUser({ settings: newSettings });
         this.render();
     },
 
     toggleDarkMode() {
-        const user = DataStore.getUser();
+        const user = DataStore.getUserSync();
         const newSettings = { ...user.settings, darkMode: !user.settings.darkMode };
         DataStore.updateUser({ settings: newSettings });
 
@@ -214,7 +214,7 @@ const SettingsScreen = {
                 ${languages.map(lang => `
                     <button onclick="SettingsScreen.setLanguage('${lang}')" class="w-full p-4 bg-surface-light dark:bg-[#1a2e25] rounded-xl text-left hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center justify-between">
                         <span class="font-medium">${lang}</span>
-                        ${DataStore.getUser().targetLanguage === lang ? '<span class="material-symbols-outlined text-primary">check</span>' : ''}
+                        ${DataStore.getUserSync().targetLanguage === lang ? '<span class="material-symbols-outlined text-primary">check</span>' : ''}
                     </button>
                 `).join('')}
             </div>
@@ -229,7 +229,7 @@ const SettingsScreen = {
     },
 
     editProfile() {
-        const user = DataStore.getUser();
+        const user = DataStore.getUserSync();
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
@@ -262,10 +262,10 @@ const SettingsScreen = {
 
     exportData() {
         const data = {
-            user: DataStore.getUser(),
-            collections: DataStore.getCollections(),
-            cards: DataStore.getCards(),
-            dialogues: DataStore.getDialogues()
+            user: DataStore.getUserSync(),
+            collections: DataStore.getCollectionsSync(),
+            cards: DataStore.getCardsSync(),
+            dialogues: DataStore.getDialoguesSync()
         };
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
