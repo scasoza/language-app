@@ -18,38 +18,85 @@ const StudyScreen = {
     collectionId: null,
 
     init(collectionId = null, studyAll = false) {
-        this.collectionId = collectionId;
-        // Get due cards first, but if none due and studyAll, get all cards
-        this.cards = DataStore.getDueCards(collectionId);
-        if (this.cards.length === 0 && (studyAll || collectionId)) {
-            // No due cards - get all cards for this collection to allow practice
-            this.cards = DataStore.getCards(collectionId);
+        console.log('StudyScreen.init() called with collectionId:', collectionId);
+        try {
+            this.collectionId = collectionId;
+            // Get due cards first, but if none due and studyAll, get all cards
+            this.cards = DataStore.getDueCards(collectionId);
+
+            // Defensive check: ensure cards is an array
+            if (!Array.isArray(this.cards)) {
+                console.error('getDueCards returned non-array:', this.cards);
+                this.cards = [];
+            }
+
+            if (this.cards.length === 0 && (studyAll || collectionId)) {
+                // No due cards - get all cards for this collection to allow practice
+                this.cards = DataStore.getCards(collectionId);
+
+                // Defensive check: ensure cards is an array
+                if (!Array.isArray(this.cards)) {
+                    console.error('getCards returned non-array:', this.cards);
+                    this.cards = [];
+                }
+            }
+
+            console.log('StudyScreen initialized with', this.cards.length, 'cards');
+
+            this.currentIndex = 0;
+            this.isFlipped = false;
+            this.sessionStats = {
+                total: this.cards.length,
+                reviewed: 0,
+                again: 0,
+                hard: 0,
+                good: 0,
+                easy: 0
+            };
+        } catch (error) {
+            console.error('Error in StudyScreen.init():', error);
+            // Set safe defaults
+            this.cards = [];
+            this.currentIndex = 0;
+            this.isFlipped = false;
+            this.sessionStats = {
+                total: 0,
+                reviewed: 0,
+                again: 0,
+                hard: 0,
+                good: 0,
+                easy: 0
+            };
         }
-        this.currentIndex = 0;
-        this.isFlipped = false;
-        this.sessionStats = {
-            total: this.cards.length,
-            reviewed: 0,
-            again: 0,
-            hard: 0,
-            good: 0,
-            easy: 0
-        };
     },
 
     render() {
+        console.log('StudyScreen.render() called');
         const container = document.getElementById('screen-study');
+
+        // Critical defensive check
+        if (!container) {
+            console.error('screen-study container not found!');
+            return;
+        }
 
         if (this.cards.length === 0 || this.currentIndex >= this.cards.length) {
             this.renderComplete();
             return;
         }
 
-        const card = this.cards[this.currentIndex];
-        const collection = DataStore.getCollection(card.collectionId);
-        const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
+        try {
+            const card = this.cards[this.currentIndex];
+            if (!card) {
+                console.error('Card not found at index:', this.currentIndex);
+                this.renderComplete();
+                return;
+            }
 
-        container.innerHTML = `
+            const collection = DataStore.getCollection(card.collectionId);
+            const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
+
+            container.innerHTML = `
             <div class="relative flex h-screen w-full flex-col overflow-hidden">
                 <!-- Header Section -->
                 <header class="flex flex-col w-full z-10 pt-safe-top">
@@ -187,12 +234,39 @@ const StudyScreen = {
                 <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[100px] opacity-50 mix-blend-screen"></div>
             </div>
         `;
+        } catch (error) {
+            console.error('Error rendering study card:', error);
+            // Show error state instead of green screen
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen p-6 text-center">
+                    <div class="mb-8">
+                        <span class="material-symbols-outlined text-6xl text-rose-400">error</span>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-2">Something Went Wrong</h1>
+                    <p class="text-slate-400 mb-4 max-w-xs">There was an error loading the study session.</p>
+                    <p class="text-xs text-slate-500 mb-8 font-mono">${error.message || 'Unknown error'}</p>
+                    <button onclick="app.navigate('home')" class="bg-primary text-background-dark font-bold py-4 px-6 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined inline-block mr-2">home</span>
+                        Back to Home
+                    </button>
+                </div>
+            `;
+        }
     },
 
     renderComplete() {
+        console.log('StudyScreen.renderComplete() called');
         const container = document.getElementById('screen-study');
-        const { reviewed, again, hard, good, easy, total } = this.sessionStats;
-        const accuracy = reviewed > 0 ? Math.round(((good + easy) / reviewed) * 100) : 0;
+
+        // Defensive check
+        if (!container) {
+            console.error('screen-study container not found in renderComplete!');
+            return;
+        }
+
+        try {
+            const { reviewed, again, hard, good, easy, total } = this.sessionStats;
+            const accuracy = reviewed > 0 ? Math.round(((good + easy) / reviewed) * 100) : 0;
 
         // Check if this is "no cards" vs "session complete"
         const noCards = total === 0 && reviewed === 0;
@@ -281,6 +355,23 @@ const StudyScreen = {
                 </div>
             </div>
         `;
+        } catch (error) {
+            console.error('Error in renderComplete():', error);
+            // Fallback UI
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen p-6 text-center">
+                    <div class="mb-8">
+                        <span class="material-symbols-outlined text-6xl text-slate-400">check_circle</span>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-2">Session Complete</h1>
+                    <p class="text-slate-400 mb-8 max-w-xs">Great work! Continue learning by reviewing more cards.</p>
+                    <button onclick="app.navigate('home')" class="bg-primary text-background-dark font-bold py-4 px-6 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined inline-block mr-2">home</span>
+                        Back to Home
+                    </button>
+                </div>
+            `;
+        }
     },
 
     async flip() {
