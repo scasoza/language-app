@@ -220,15 +220,10 @@ const DialogueSettingsScreen = {
         }
 
         this.isGenerating = true;
-
-        // Show loading overlay with fun subtitle
-        const scenario = this.scenarios.find(s => s.id === this.settings.scenario);
-        app.showLoadingOverlay(
-            'Creating your dialogue...',
-            `Setting the scene: ${scenario?.label || 'conversation'}`
-        );
+        this.render();
 
         try {
+            const scenario = this.scenarios.find(s => s.id === this.settings.scenario);
             const complexity = ['beginner', 'elementary', 'intermediate', 'upper-intermediate', 'advanced'][this.settings.complexity - 1];
 
             const dialogue = await GeminiService.generateDialogue({
@@ -236,25 +231,23 @@ const DialogueSettingsScreen = {
                 vocabulary: this.settings.vocabulary,
                 complexity,
                 length: this.settings.length,
-                targetLanguage: DataStore.getUserSync().targetLanguage,
-                nativeLanguage: DataStore.getUserSync().nativeLanguage
+                targetLanguage: DataStore.getUser().targetLanguage,
+                nativeLanguage: DataStore.getUser().nativeLanguage
             });
 
             if (dialogue) {
                 this.generatedDialogue = dialogue;
                 DataStore.addDialogue(dialogue);
 
-                app.hideLoadingOverlay();
-
                 // Navigate to practice screen
                 DialoguePracticeScreen.setDialogue(dialogue);
                 app.navigate('dialogue-practice');
             }
         } catch (error) {
-            app.hideLoadingOverlay();
             app.showToast(error.message, 'error');
         } finally {
             this.isGenerating = false;
+            this.render();
         }
     },
 

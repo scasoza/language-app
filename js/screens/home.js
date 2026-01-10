@@ -4,9 +4,9 @@
 
 const HomeScreen = {
     render() {
-        const user = DataStore.getUserSync();
-        const stats = DataStore.getStatsSync();
-        const collections = DataStore.getCollectionsSync().slice(0, 3);
+        const user = DataStore.getUser();
+        const stats = DataStore.getStats();
+        const collections = DataStore.getCollections().slice(0, 3);
 
         const greeting = this.getGreeting();
 
