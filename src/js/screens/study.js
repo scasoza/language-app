@@ -98,6 +98,11 @@ const StudyScreen = {
                             <div class="flex flex-col items-center gap-1 mb-8">
                                 <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${card.front}</h1>
                                 ${card.reading ? `<p class="text-xl text-slate-400 dark:text-primary/80 font-medium">(${card.reading})</p>` : ''}
+
+                                <!-- Pronunciation button on front -->
+                                <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="mt-4 size-12 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                    <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-2xl">volume_up</span>
+                                </button>
                             </div>
 
                             <!-- Answer Section (Revealed on flip) -->
@@ -108,6 +113,11 @@ const StudyScreen = {
 
                                     <!-- Translation -->
                                     <h3 class="text-3xl font-bold text-primary tracking-tight">${card.back}</h3>
+
+                                    <!-- Replay pronunciation button on back -->
+                                    <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                        <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
+                                    </button>
 
                                     <!-- Context Sentence -->
                                     ${card.example ? `
@@ -273,10 +283,13 @@ const StudyScreen = {
         `;
     },
 
-    flip() {
+    async flip() {
         if (!this.isFlipped) {
             this.isFlipped = true;
             this.render();
+
+            // Auto-play pronunciation when revealing answer
+            await this.playAudio();
         }
     },
 
@@ -301,11 +314,39 @@ const StudyScreen = {
         this.render();
     },
 
-    playAudio() {
+    async playAudio() {
         const card = this.cards[this.currentIndex];
-        if (card?.audio) {
-            const audio = new Audio(card.audio);
-            audio.play();
+        if (!card) return;
+
+        try {
+            let audioData = card.audio;
+
+            // Generate TTS if no audio exists
+            if (!audioData && GeminiService.isConfigured()) {
+                app.showToast('Generating pronunciation...', 'info');
+                audioData = await GeminiService.generateTTS(card.front);
+
+                // Save audio to card for future use
+                if (audioData) {
+                    DataStore.updateCard(card.id, { audio: audioData });
+                    card.audio = audioData;
+                    this.render(); // Re-render to show replay button
+                }
+            }
+
+            // Play audio
+            if (audioData) {
+                const audio = new Audio(audioData);
+                audio.play().catch(e => {
+                    console.error('Audio playback failed:', e);
+                    app.showToast('Could not play audio', 'error');
+                });
+            } else if (!GeminiService.isConfigured()) {
+                app.showToast('Configure Gemini API key to enable pronunciation', 'info');
+            }
+        } catch (error) {
+            console.error('TTS error:', error);
+            app.showToast('Could not generate pronunciation', 'error');
         }
     },
 
