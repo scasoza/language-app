@@ -44,6 +44,25 @@ const CollectionsScreen = {
 
             <!-- Main Grid Content -->
             <main class="px-4 py-4">
+                <!-- AI Quick Create Banner -->
+                ${collections.length === 0 || this.filter === 'all' ? `
+                    <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
+                        <div class="flex items-start gap-3">
+                            <div class="size-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-white mb-1">Create with AI</h3>
+                                <p class="text-xs text-slate-300 mb-3">Generate custom decks instantly with Gemini AI</p>
+                                <button onclick="app.showCreateCollectionModal()" class="bg-primary text-background-dark px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
+                                    <span class="material-symbols-outlined text-sm">flash_on</span>
+                                    Generate Deck
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="grid grid-cols-2 gap-4">
                     ${collections.map(col => this.renderCollectionCard(col)).join('')}
 
