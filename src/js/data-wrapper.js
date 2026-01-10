@@ -277,6 +277,30 @@ const DataStore = {
 
     getDialogues() {
         return this.dialogues;
+    },
+
+    // Statistics methods
+    getTotalDueCards() {
+        return this.getDueCards().length;
+    },
+
+    getStats() {
+        const user = this.getUser();
+        const collections = this.getCollections();
+        const totalDue = this.getTotalDueCards();
+
+        const totalMastered = collections.reduce((sum, c) => sum + (c.mastered || 0), 0);
+        const totalCards = collections.reduce((sum, c) => sum + (c.cardCount || 0), 0);
+
+        return {
+            streak: user.streak || 0,
+            totalCardsLearned: user.totalCardsLearned || 0,
+            totalCollections: collections.length,
+            totalCards,
+            totalMastered,
+            totalDue,
+            masteryPercent: totalCards > 0 ? Math.round((totalMastered / totalCards) * 100) : 0
+        };
     }
 };
 

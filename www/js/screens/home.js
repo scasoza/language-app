@@ -4,14 +4,22 @@
 
 const HomeScreen = {
     render() {
-        const user = DataStore.getUser();
-        const stats = DataStore.getStats();
-        const collections = DataStore.getCollections().slice(0, 3);
-
-        const greeting = this.getGreeting();
-
+        console.log('HomeScreen.render() called');
         const container = document.getElementById('screen-home');
-        container.innerHTML = `
+
+        if (!container) {
+            console.error('screen-home container not found!');
+            return;
+        }
+
+        try {
+            const user = DataStore.getUser();
+            const stats = DataStore.getStats();
+            const collections = DataStore.getCollections().slice(0, 3);
+
+            const greeting = this.getGreeting();
+
+            container.innerHTML = `
             <!-- Header -->
             <header class="flex items-center justify-between px-4 pt-6 pb-2 sticky top-0 z-10 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
                 <div class="flex items-center gap-3">
@@ -114,6 +122,24 @@ const HomeScreen = {
                 </div>
             </section>
         `;
+        } catch (error) {
+            console.error('Error rendering home screen:', error);
+            // Show error fallback UI
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen p-6 text-center">
+                    <div class="mb-8">
+                        <span class="material-symbols-outlined text-6xl text-rose-400">error</span>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-2">Something Went Wrong</h1>
+                    <p class="text-slate-400 mb-4 max-w-xs">There was an error loading the home screen.</p>
+                    <p class="text-xs text-slate-500 mb-8 font-mono">${error.message || 'Unknown error'}</p>
+                    <button onclick="location.reload()" class="bg-primary text-background-dark font-bold py-4 px-6 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined inline-block mr-2">refresh</span>
+                        Reload App
+                    </button>
+                </div>
+            `;
+        }
     },
 
     renderCollectionCard(col) {
