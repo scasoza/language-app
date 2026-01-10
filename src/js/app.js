@@ -223,7 +223,9 @@ const app = {
                 return;
             }
 
-            this.showToast('Generating collection with AI...', 'info');
+            // Close modal and show loading overlay immediately
+            this.closeModal();
+            this.showLoadingOverlay('Generating collection with AI...');
 
             try {
                 const user = DataStore.getUser();
@@ -234,24 +236,36 @@ const app = {
                     cardCount: 10
                 });
 
-                // Create collection
-                const collection = DataStore.addCollection({
+                // Update loading message
+                this.updateLoadingOverlay(`Creating "${result.name || topic}"...`);
+
+                // Create collection (AWAIT the async operation!)
+                const collection = await DataStore.addCollection({
                     name: result.name || topic,
                     emoji: result.emoji || emoji,
                     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
                 });
 
-                // Add cards
+                // Add cards (AWAIT each async operation!)
                 if (result.cards && result.cards.length > 0) {
-                    result.cards.forEach(card => {
-                        DataStore.addCard({
+                    this.updateLoadingOverlay(`Adding ${result.cards.length} cards...`);
+
+                    // Add cards sequentially to ensure they all save
+                    for (let i = 0; i < result.cards.length; i++) {
+                        const card = result.cards[i];
+                        await DataStore.addCard({
                             ...card,
                             collectionId: collection.id
                         });
-                    });
+
+                        // Update progress
+                        if ((i + 1) % 3 === 0 || i === result.cards.length - 1) {
+                            this.updateLoadingOverlay(`Adding cards... (${i + 1}/${result.cards.length})`);
+                        }
+                    }
                 }
 
-                this.closeModal();
+                this.hideLoadingOverlay();
                 this.showToast(`Created "${result.name}" with ${result.cards?.length || 0} cards!`, 'success');
 
                 // Refresh screen
@@ -261,6 +275,7 @@ const app = {
                     HomeScreen.render();
                 }
             } catch (error) {
+                this.hideLoadingOverlay();
                 this.showToast(error.message, 'error');
             }
         } else {
@@ -506,6 +521,41 @@ const app = {
             toast.classList.add('opacity-0', 'translate-y-[-10px]');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    },
+
+    // Loading overlay
+    showLoadingOverlay(message = 'Loading...') {
+        let overlay = document.getElementById('loading-overlay');
+
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'loading-overlay';
+            overlay.className = 'fixed inset-0 bg-background-dark/90 backdrop-blur-sm z-[100] flex items-center justify-center';
+            document.body.appendChild(overlay);
+        }
+
+        overlay.innerHTML = `
+            <div class="flex flex-col items-center gap-4 bg-surface-dark border border-white/10 rounded-2xl p-8 max-w-sm mx-4">
+                <div class="spinner"></div>
+                <p class="text-white font-medium text-center" id="loading-message">${message}</p>
+            </div>
+        `;
+
+        overlay.classList.remove('hidden');
+    },
+
+    updateLoadingOverlay(message) {
+        const messageEl = document.getElementById('loading-message');
+        if (messageEl) {
+            messageEl.textContent = message;
+        }
+    },
+
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
     }
 };
 
