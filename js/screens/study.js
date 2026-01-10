@@ -326,10 +326,12 @@ const StudyScreen = {
                 app.showToast('Generating pronunciation...', 'info');
                 audioData = await GeminiService.generateTTS(card.front);
 
-                // Save audio to card for future use
+                // Save audio to card for future use (saves to Supabase!)
                 if (audioData) {
-                    DataStore.updateCard(card.id, { audio: audioData });
+                    console.log('Saving generated audio to card:', card.id);
+                    await DataStore.updateCard(card.id, { audio: audioData });
                     card.audio = audioData;
+                    app.showToast('Pronunciation saved!', 'success');
                     this.render(); // Re-render to show replay button
                 }
             }

@@ -7,7 +7,16 @@ const app = {
     history: [],
     screensWithNav: ['home', 'collections', 'dialogue-settings', 'settings'],
 
-    init() {
+    async init() {
+        console.log('🚀 Initializing LinguaFlow...');
+
+        // Initialize Supabase
+        await SupabaseService.init();
+        console.log('✅ Supabase initialized:', SupabaseService.initialized);
+
+        // Initialize DataStore with Supabase backend
+        await DataStore.init();
+
         // Check if onboarded
         if (DataStore.isOnboarded()) {
             this.navigate('home');
@@ -17,7 +26,11 @@ const app = {
 
         // Apply dark mode from settings
         const user = DataStore.getUser();
-        document.documentElement.classList.toggle('dark', user.settings.darkMode);
+        if (user) {
+            document.documentElement.classList.toggle('dark', user.settings.darkMode);
+        }
+
+        console.log('✅ App initialized');
     },
 
     navigate(screenId, addToHistory = true) {
