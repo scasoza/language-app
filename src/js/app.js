@@ -124,10 +124,16 @@ const app = {
 
     // Collection actions
     openCollection(id) {
+        console.log('Opening collection:', id);
         const collection = DataStore.getCollection(id);
         if (collection) {
+            console.log('Collection found:', collection.name);
             CollectionDetailScreen.setCollection(id);
             this.navigate('collection-detail');
+        } else {
+            console.error('Collection not found:', id);
+            this.showToast('Collection not found', 'error');
+            this.navigate('collections');
         }
     },
 
