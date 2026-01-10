@@ -414,19 +414,18 @@ const app = {
 
             this.recognition.onresult = (event) => {
                 let finalTranscript = '';
-                let interimTranscript = '';
 
+                // Only get the latest result to avoid duplication
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
-                        finalTranscript += transcript + ' ';
-                    } else {
-                        interimTranscript += transcript;
+                        finalTranscript += event.results[i][0].transcript + ' ';
                     }
                 }
 
                 if (finalTranscript) {
-                    topicInput.value = (topicInput.value + ' ' + finalTranscript).trim();
+                    // Append only the new final transcript
+                    const currentValue = topicInput.value.trim();
+                    topicInput.value = currentValue ? currentValue + ' ' + finalTranscript.trim() : finalTranscript.trim();
                 }
             };
 
