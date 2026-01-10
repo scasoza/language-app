@@ -48,13 +48,21 @@ const CollectionDetailScreen = {
                         <span class="material-symbols-outlined text-white">more_vert</span>
                     </button>
 
+                    <!-- Big Study Button Overlay (if has cards) -->
+                    ${cards.length > 0 && dueCards.length > 0 ? `
+                        <button onclick="app.startStudySession('${collection.id}')" class="absolute bottom-4 right-4 z-10 flex items-center gap-2 bg-primary text-background-dark font-bold px-6 py-3 rounded-full shadow-[0_0_20px_rgba(13,242,128,0.6)] hover:scale-105 transition-transform">
+                            <span class="material-symbols-outlined">play_arrow</span>
+                            <span>Study ${dueCards.length} Card${dueCards.length !== 1 ? 's' : ''}</span>
+                        </button>
+                    ` : ''}
+
                     <!-- Collection info -->
                     <div class="absolute bottom-4 left-4 right-4 z-10">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-3xl">${collection.emoji}</span>
                             <h1 class="text-2xl font-bold text-white">${collection.name}</h1>
                         </div>
-                        <p class="text-sm text-white/70">${cards.length} cards · ${dueCards.length} due</p>
+                        <p class="text-sm text-white/70">${cards.length} cards${dueCards.length > 0 ? ` · ${dueCards.length} due` : ''}</p>
                     </div>
                 </div>
 
@@ -69,14 +77,17 @@ const CollectionDetailScreen = {
                     </div>
                 </div>
 
-                <!-- Action buttons -->
+                <!-- Main Action buttons -->
                 <div class="p-4 flex gap-3">
-                    <button onclick="app.startStudySession('${collection.id}')" class="flex-1 bg-primary text-background-dark font-bold py-4 rounded-xl flex items-center justify-center gap-2 ${cards.length === 0 ? 'opacity-50 pointer-events-none' : ''}">
-                        <span class="material-symbols-outlined">play_arrow</span>
-                        Study Now
-                    </button>
-                    <button onclick="CollectionDetailScreen.addCard()" class="size-14 bg-surface-dark border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/5">
-                        <span class="material-symbols-outlined text-primary">add</span>
+                    ${cards.length > 0 ? `
+                        <button onclick="app.startStudySession('${collection.id}')" class="flex-1 bg-primary text-background-dark font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(13,242,128,0.3)] hover:scale-[1.02] transition-transform ${dueCards.length === 0 ? 'opacity-50' : ''}">
+                            <span class="material-symbols-outlined text-2xl">play_arrow</span>
+                            <span class="text-lg">Study Now</span>
+                        </button>
+                    ` : ''}
+                    <button onclick="CollectionDetailScreen.addCard()" class="${cards.length === 0 ? 'flex-1 bg-primary text-background-dark' : 'bg-surface-dark border border-white/10'} ${cards.length === 0 ? 'py-4' : 'size-14'} font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-${cards.length === 0 ? 'primary/90' : 'white/5'} transition-colors">
+                        <span class="material-symbols-outlined ${cards.length === 0 ? 'text-2xl' : 'text-primary'}">add</span>
+                        ${cards.length === 0 ? '<span class="text-lg">Add Cards</span>' : ''}
                     </button>
                 </div>
 
