@@ -162,11 +162,17 @@ const app = {
                     <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
-                <div class="pt-2">
-                    <p class="text-sm text-gray-400 mb-3">Or generate with AI:</p>
+                <div class="pt-2 border-t border-white/10">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-bold text-primary">✨ Generate with AI</p>
+                        <button id="voice-input-btn" onclick="app.startVoiceInput()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Speak to describe your collection">
+                            <span class="material-symbols-outlined text-primary text-xl">mic</span>
+                        </button>
+                    </div>
                     <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Topic</label>
-                        <input type="text" id="collection-topic" placeholder="e.g., Food vocabulary, Travel phrases" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Describe what you want</label>
+                        <textarea id="collection-topic" rows="3" placeholder="Type or speak: 'I want to learn common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                        <p class="text-xs text-slate-500 mt-1">💡 Tip: Click the microphone to speak instead of typing</p>
                     </div>
                 </div>
 
@@ -174,7 +180,7 @@ const app = {
                     <button onclick="app.createCollection(false)" class="flex-1 bg-surface-dark border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/5 transition-colors">
                         Create Empty
                     </button>
-                    <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
                         <span class="material-symbols-outlined text-xl">auto_awesome</span>
                         Generate
                     </button>
@@ -374,6 +380,87 @@ const app = {
         if (overlay) {
             overlay.classList.add('opacity-0');
             setTimeout(() => overlay.remove(), 300);
+        }
+    },
+
+    // Voice input for creating collections
+    recognition: null,
+    isListening: false,
+
+    startVoiceInput() {
+        // Check browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            this.showToast('Voice input not supported in this browser', 'error');
+            return;
+        }
+
+        const topicInput = document.getElementById('collection-topic');
+        const voiceBtn = document.getElementById('voice-input-btn');
+
+        if (!this.recognition) {
+            this.recognition = new SpeechRecognition();
+            this.recognition.continuous = true;
+            this.recognition.interimResults = true;
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onstart = () => {
+                this.isListening = true;
+                voiceBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+                this.showToast('Listening... Speak now!', 'info');
+            };
+
+            this.recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                if (finalTranscript) {
+                    topicInput.value = (topicInput.value + ' ' + finalTranscript).trim();
+                }
+            };
+
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.stopVoiceInput();
+                if (event.error !== 'no-speech') {
+                    this.showToast('Voice input error: ' + event.error, 'error');
+                }
+            };
+
+            this.recognition.onend = () => {
+                this.stopVoiceInput();
+            };
+        }
+
+        if (this.isListening) {
+            this.stopVoiceInput();
+        } else {
+            this.recognition.start();
+        }
+    },
+
+    stopVoiceInput() {
+        if (this.recognition && this.isListening) {
+            this.recognition.stop();
+            this.isListening = false;
+
+            const voiceBtn = document.getElementById('voice-input-btn');
+            if (voiceBtn) {
+                voiceBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+            }
         }
     },
 
