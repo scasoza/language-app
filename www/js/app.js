@@ -223,12 +223,17 @@ const app = {
                 return;
             }
 
-            // Close modal and show loading overlay immediately
+            // Close modal
             this.closeModal();
-            this.showLoadingOverlay('Generating collection with AI...');
+
+            // Add placeholder card to collections screen
+            const placeholderId = 'placeholder-' + Date.now();
+            this.showPlaceholderCollection(placeholderId, topic, emoji);
 
             try {
                 const user = DataStore.getUser();
+                this.showToast('Generating with AI...', 'info');
+
                 const result = await GeminiService.generateCollection({
                     topic,
                     targetLanguage: user.targetLanguage,
@@ -236,8 +241,7 @@ const app = {
                     cardCount: 10
                 });
 
-                // Update loading message
-                this.updateLoadingOverlay(`Creating "${result.name || topic}"...`);
+                console.log('Generated collection:', result);
 
                 // Create collection (AWAIT the async operation!)
                 const collection = await DataStore.addCollection({
@@ -246,27 +250,35 @@ const app = {
                     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
                 });
 
+                console.log('Collection created:', collection);
+
                 // Add cards (AWAIT each async operation!)
                 if (result.cards && result.cards.length > 0) {
-                    this.updateLoadingOverlay(`Adding ${result.cards.length} cards...`);
+                    console.log(`Adding ${result.cards.length} cards...`);
 
                     // Add cards sequentially to ensure they all save
                     for (let i = 0; i < result.cards.length; i++) {
                         const card = result.cards[i];
-                        await DataStore.addCard({
-                            ...card,
-                            collectionId: collection.id
-                        });
-
-                        // Update progress
-                        if ((i + 1) % 3 === 0 || i === result.cards.length - 1) {
-                            this.updateLoadingOverlay(`Adding cards... (${i + 1}/${result.cards.length})`);
+                        try {
+                            const newCard = await DataStore.addCard({
+                                ...card,
+                                collectionId: collection.id
+                            });
+                            console.log(`Card ${i + 1}/${result.cards.length} added:`, newCard);
+                        } catch (cardError) {
+                            console.error(`Error adding card ${i + 1}:`, cardError);
                         }
                     }
                 }
 
-                this.hideLoadingOverlay();
-                this.showToast(`Created "${result.name}" with ${result.cards?.length || 0} cards!`, 'success');
+                // Remove placeholder
+                this.removePlaceholderCollection(placeholderId);
+
+                // Verify cards were actually added
+                const savedCards = DataStore.getCards(collection.id);
+                console.log(`Verification: ${savedCards.length} cards in collection ${collection.id}`);
+
+                this.showToast(`Created "${result.name}" with ${savedCards.length} cards!`, 'success');
 
                 // Refresh screen
                 if (this.currentScreen === 'collections') {
@@ -275,7 +287,8 @@ const app = {
                     HomeScreen.render();
                 }
             } catch (error) {
-                this.hideLoadingOverlay();
+                console.error('Error creating collection:', error);
+                this.removePlaceholderCollection(placeholderId);
                 this.showToast(error.message, 'error');
             }
         } else {
@@ -523,38 +536,18 @@ const app = {
         }, 3000);
     },
 
-    // Loading overlay
-    showLoadingOverlay(message = 'Loading...') {
-        let overlay = document.getElementById('loading-overlay');
-
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'loading-overlay';
-            overlay.className = 'fixed inset-0 bg-background-dark/90 backdrop-blur-sm z-[100] flex items-center justify-center';
-            document.body.appendChild(overlay);
-        }
-
-        overlay.innerHTML = `
-            <div class="flex flex-col items-center gap-4 bg-surface-dark border border-white/10 rounded-2xl p-8 max-w-sm mx-4">
-                <div class="spinner"></div>
-                <p class="text-white font-medium text-center" id="loading-message">${message}</p>
-            </div>
-        `;
-
-        overlay.classList.remove('hidden');
-    },
-
-    updateLoadingOverlay(message) {
-        const messageEl = document.getElementById('loading-message');
-        if (messageEl) {
-            messageEl.textContent = message;
+    // Placeholder collection card for AI generation
+    showPlaceholderCollection(id, topic, emoji = '✨') {
+        // Only add placeholder if we're on collections screen
+        if (this.currentScreen === 'collections') {
+            CollectionsScreen.addPlaceholder(id, topic, emoji);
         }
     },
 
-    hideLoadingOverlay() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.classList.add('hidden');
+    removePlaceholderCollection(id) {
+        // Remove placeholder from collections screen
+        if (this.currentScreen === 'collections') {
+            CollectionsScreen.removePlaceholder(id);
         }
     }
 };
