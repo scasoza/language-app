@@ -204,7 +204,13 @@
     </div>
 
     <!-- Load App Scripts -->
-    <script src="js/data.js"></script>
+    <script>
+        // Supabase Configuration - Set your values here or in localStorage
+        window.SUPABASE_URL = localStorage.getItem('supabase_url') || 'YOUR_SUPABASE_URL';
+        window.SUPABASE_ANON_KEY = localStorage.getItem('supabase_key') || 'YOUR_SUPABASE_ANON_KEY';
+    </script>
+    <script src="js/supabase.js"></script>
+    <script src="js/data-wrapper.js"></script>
     <script src="js/gemini-service.js"></script>
     <script src="js/screens/onboarding.js"></script>
     <script src="js/screens/home.js"></script>
