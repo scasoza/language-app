@@ -469,22 +469,42 @@ const StudyScreen = {
                 const targetLanguage = user ? user.targetLanguage : 'Chinese';
 
                 try {
-                    // Use Cloud TTS for flashcards (more reliable than Gemini TTS)
+                    // Try Cloud TTS first (more reliable, language-specific)
                     // Timeout: 10 seconds (Cloud TTS is faster than Gemini)
                     const timeoutPromise = new Promise((_, reject) =>
                         setTimeout(() => reject(new Error('Timeout')), 10000)
                     );
 
-                    audioData = await Promise.race([
-                        GeminiService.generateCloudTTS(card.front, targetLanguage),
-                        timeoutPromise
-                    ]);
+                    try {
+                        audioData = await Promise.race([
+                            GeminiService.generateCloudTTS(card.front, targetLanguage),
+                            timeoutPromise
+                        ]);
+                    } catch (cloudError) {
+                        // If Cloud TTS not enabled (403), fall back to Gemini TTS
+                        if (cloudError.message && cloudError.message.includes('403')) {
+                            console.warn('⚠️ Cloud TTS not enabled, falling back to Gemini TTS');
+                            app.showToast('Using Gemini TTS (Cloud TTS not enabled)', 'info');
+
+                            // Fallback to Gemini TTS with retry logic
+                            const geminiTimeout = new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout')), 20000)
+                            );
+
+                            audioData = await Promise.race([
+                                GeminiService.generateTTS(card.front),
+                                geminiTimeout
+                            ]);
+                        } else {
+                            throw cloudError;
+                        }
+                    }
 
                     if (!audioData) {
                         throw new Error('API returned empty audio data');
                     }
 
-                    console.log(`✅ Cloud TTS generated successfully, audio data length: ${audioData.length}`);
+                    console.log(`✅ TTS generated successfully, audio data length: ${audioData.length}`);
 
                     // Save audio to card for future use
                     await DataStore.updateCard(card.id, { audio: audioData });
