@@ -590,7 +590,7 @@ Respond ONLY with valid JSON:
 
     /**
      * Generate TTS using Google Cloud Text-to-Speech (for flashcards)
-     * More reliable than Gemini TTS, better for simple/repetitive audio
+     * Calls Supabase Edge Function which handles service account auth
      * @param {string} text - Text to convert to speech
      * @param {string} language - Target language (e.g., 'Chinese', 'Spanish')
      * @returns {Promise<string>} - Base64 audio data URL
@@ -600,35 +600,30 @@ Respond ONLY with valid JSON:
         console.log(`   - Text: "${text}"`);
         console.log(`   - Language: ${language}`);
 
-        const apiKey = this.getApiKey();
-        if (!apiKey) {
-            throw new Error('Gemini API key not configured');
+        // Get Supabase URL
+        const supabaseUrl = window.SUPABASE_URL || localStorage.getItem('supabase_url');
+        if (!supabaseUrl) {
+            throw new Error('Supabase not configured');
         }
 
         // Get voice for target language
         const voiceName = this.VOICES.cloudTTS[language] || 'cmn-CN-Wavenet-A';
         const languageCode = voiceName.split('-').slice(0, 2).join('-'); // e.g., 'cmn-CN'
 
-        const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+        // Call Supabase Edge Function
+        const functionUrl = `${supabaseUrl}/functions/v1/cloud-tts`;
 
         const requestBody = {
-            input: { text },
-            voice: {
-                languageCode,
-                name: voiceName
-            },
-            audioConfig: {
-                audioEncoding: 'MP3',
-                speakingRate: 1.0,
-                pitch: 0.0
-            }
+            text,
+            languageCode,
+            voiceName
         };
 
         try {
-            console.log(`🌐 Calling Cloud TTS API...`);
+            console.log(`🌐 Calling Supabase Edge Function...`);
             console.log(`📤 Request body:`, JSON.stringify(requestBody, null, 2));
 
-            const response = await fetch(url, {
+            const response = await fetch(functionUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)
@@ -638,7 +633,7 @@ Respond ONLY with valid JSON:
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`❌ Cloud TTS API error:`, errorText);
+                console.error(`❌ Cloud TTS Edge Function error:`, errorText);
                 throw new Error(`Cloud TTS failed: ${response.statusText}`);
             }
 
