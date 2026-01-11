@@ -17,18 +17,23 @@ const DataStore = {
     async init() {
         console.log('📦 Initializing DataStore...');
 
-        // Check if Supabase is configured
-        this.useSupabase = SupabaseService && SupabaseService.initialized;
+        // Check if Supabase is configured AND authenticated
+        this.useSupabase = SupabaseService &&
+                          SupabaseService.initialized &&
+                          SupabaseService.isAuthenticated();
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        console.log(`🔍 useSupabase: ${this.useSupabase}`);
+
+        if (this.useSupabase) {
             console.log('✅ Loading data from Supabase...');
             await this.loadFromSupabase();
         } else {
-            console.log('⚠️ Supabase not authenticated, using localStorage');
+            console.log('⚠️ Supabase not available, using localStorage');
             this.loadFromLocalStorage();
         }
 
         console.log('✅ DataStore initialized');
+        console.log(`📊 Data loaded: ${this.collections.length} collections, ${this.cards.length} cards`);
     },
 
     async loadFromSupabase() {
@@ -83,10 +88,16 @@ const DataStore = {
     async updateUser(updates) {
         this.user = { ...this.user, ...updates };
 
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
+
+        // Also save to Supabase if available
         if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            await SupabaseService.updateProfile(updates);
-        } else {
-            this.saveToLocalStorage();
+            try {
+                await SupabaseService.updateProfile(updates);
+            } catch (error) {
+                console.error('Failed to update profile in Supabase:', error);
+            }
         }
 
         return this.user;
@@ -98,9 +109,8 @@ const DataStore = {
 
     setOnboarded(value = true) {
         this.onboarded = value;
-        if (!this.useSupabase) {
-            this.saveToLocalStorage();
-        }
+        // Always save to localStorage
+        this.saveToLocalStorage();
     },
 
     // Collections methods
@@ -116,8 +126,21 @@ const DataStore = {
         let newCollection;
 
         if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            newCollection = await SupabaseService.addCollection(collection);
-            this.collections.push(newCollection);
+            try {
+                newCollection = await SupabaseService.addCollection(collection);
+                this.collections.push(newCollection);
+            } catch (error) {
+                console.error('Failed to add collection to Supabase:', error);
+                // Fallback to local ID generation
+                newCollection = {
+                    id: 'col_' + Date.now(),
+                    cardCount: 0,
+                    mastered: 0,
+                    dueCards: 0,
+                    ...collection
+                };
+                this.collections.push(newCollection);
+            }
         } else {
             newCollection = {
                 id: 'col_' + Date.now(),
@@ -127,8 +150,10 @@ const DataStore = {
                 ...collection
             };
             this.collections.push(newCollection);
-            this.saveToLocalStorage();
         }
+
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
 
         return newCollection;
     },
@@ -139,10 +164,16 @@ const DataStore = {
 
         this.collections[index] = { ...this.collections[index], ...updates };
 
+        // Always save to localStorage
+        this.saveToLocalStorage();
+
+        // Also save to Supabase if available
         if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            await SupabaseService.updateCollection(id, updates);
-        } else {
-            this.saveToLocalStorage();
+            try {
+                await SupabaseService.updateCollection(id, updates);
+            } catch (error) {
+                console.error('Failed to update collection in Supabase:', error);
+            }
         }
 
         return this.collections[index];
@@ -188,11 +219,26 @@ const DataStore = {
         let newCard;
 
         if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            newCard = await SupabaseService.addCard(card);
-            this.cards.push(newCard);
+            try {
+                newCard = await SupabaseService.addCard(card);
+                this.cards.push(newCard);
+            } catch (error) {
+                console.error('Failed to add card to Supabase:', error);
+                // Fallback to local ID generation
+                newCard = {
+                    id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    difficulty: 2,
+                    interval: 1,
+                    easeFactor: 2.5,
+                    reviewCount: 0,
+                    nextReview: new Date().toISOString(),
+                    ...card
+                };
+                this.cards.push(newCard);
+            }
         } else {
             newCard = {
-                id: 'card_' + Date.now(),
+                id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                 difficulty: 2,
                 interval: 1,
                 easeFactor: 2.5,
@@ -201,8 +247,10 @@ const DataStore = {
                 ...card
             };
             this.cards.push(newCard);
-            this.saveToLocalStorage();
         }
+
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
 
         // Update collection card count
         await this.updateCollectionStats(card.collectionId);
@@ -216,10 +264,16 @@ const DataStore = {
 
         this.cards[index] = { ...this.cards[index], ...updates };
 
+        // Always save to localStorage
+        this.saveToLocalStorage();
+
+        // Also save to Supabase if available
         if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            await SupabaseService.updateCard(id, updates);
-        } else {
-            this.saveToLocalStorage();
+            try {
+                await SupabaseService.updateCard(id, updates);
+            } catch (error) {
+                console.error('Failed to update card in Supabase:', error);
+            }
         }
 
         return this.cards[index];

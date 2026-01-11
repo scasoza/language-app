@@ -17,6 +17,21 @@ const app = {
         // Initialize DataStore with Supabase backend
         await DataStore.init();
 
+        // Load API key from user profile if it exists
+        const user = DataStore.getUser();
+        if (user && user.geminiApiKey) {
+            console.log('📝 Loading API key from user profile');
+            GeminiService.API_KEY = user.geminiApiKey;
+            localStorage.setItem('gemini_api_key', user.geminiApiKey);
+        } else {
+            // Try to load from localStorage as fallback
+            const apiKey = localStorage.getItem('gemini_api_key');
+            if (apiKey) {
+                console.log('📝 Loading API key from localStorage');
+                GeminiService.API_KEY = apiKey;
+            }
+        }
+
         // Check if onboarded
         if (DataStore.isOnboarded()) {
             this.navigate('home');
@@ -25,7 +40,6 @@ const app = {
         }
 
         // Apply dark mode from settings
-        const user = DataStore.getUser();
         if (user) {
             document.documentElement.classList.toggle('dark', user.settings.darkMode);
         }
