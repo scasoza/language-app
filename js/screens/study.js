@@ -146,10 +146,12 @@ const StudyScreen = {
                                 <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${card.front}</h1>
                                 ${card.reading ? `<p class="text-xl text-slate-400 dark:text-primary/80 font-medium">(${card.reading})</p>` : ''}
 
-                                <!-- Pronunciation button on front -->
-                                <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="mt-4 size-12 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
-                                    <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-2xl">volume_up</span>
-                                </button>
+                                <!-- Pronunciation button on front (only when not flipped) -->
+                                ${!this.isFlipped ? `
+                                    <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="mt-4 size-12 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                        <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-2xl">volume_up</span>
+                                    </button>
+                                ` : ''}
                             </div>
 
                             <!-- Answer Section (Revealed on flip) -->

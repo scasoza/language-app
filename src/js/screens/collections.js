@@ -192,6 +192,38 @@ const CollectionsScreen = {
             input.focus();
             input.setSelectionRange(query.length, query.length);
         }
+    },
+
+    // Add placeholder card while AI generates
+    addPlaceholder(id, topic, emoji) {
+        const grid = document.querySelector('.grid');
+        if (!grid) return;
+
+        const placeholder = document.createElement('div');
+        placeholder.id = id;
+        placeholder.className = 'group bg-surface-light dark:bg-surface-dark rounded-2xl border-2 border-dashed border-primary/30 overflow-hidden flex flex-col hover:border-primary/50 transition-colors';
+        placeholder.innerHTML = `
+            <div class="h-40 w-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center relative">
+                <div class="spinner"></div>
+            </div>
+            <div class="p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-2xl">${emoji}</span>
+                    <h3 class="font-bold text-base truncate">${topic}</h3>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Generating with AI...</p>
+            </div>
+        `;
+
+        // Insert at the beginning of the grid
+        grid.insertBefore(placeholder, grid.firstChild);
+    },
+
+    removePlaceholder(id) {
+        const placeholder = document.getElementById(id);
+        if (placeholder) {
+            placeholder.remove();
+        }
     }
 };
 
