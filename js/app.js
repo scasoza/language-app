@@ -366,12 +366,12 @@ const app = {
         `);
     },
 
-    saveApiKey() {
+    async saveApiKey() {
         const input = document.getElementById('api-key-input');
         const key = input?.value?.trim();
 
         if (key) {
-            GeminiService.setApiKey(key);
+            await GeminiService.setApiKey(key);
             this.closeModal();
             this.showToast('API key saved!', 'success');
 

@@ -241,6 +241,54 @@ const DataStore = {
         await this.updateCollectionStats(card.collectionId);
     },
 
+    // Spaced repetition algorithm (SM-2 variant)
+    async reviewCard(id, quality) {
+        // quality: 0 = again, 1 = hard, 2 = good, 3 = easy
+        const card = this.getCard(id);
+        if (!card) return null;
+
+        let { interval, easeFactor, reviewCount } = card;
+
+        // Adjust ease factor based on quality
+        if (quality === 0) {
+            // Again - reset
+            interval = 1;
+            easeFactor = Math.max(1.3, easeFactor - 0.2);
+        } else if (quality === 1) {
+            // Hard
+            interval = Math.max(1, Math.round(interval * 1.2));
+            easeFactor = Math.max(1.3, easeFactor - 0.15);
+        } else if (quality === 2) {
+            // Good
+            if (reviewCount === 0) {
+                interval = 1;
+            } else if (reviewCount === 1) {
+                interval = 6;
+            } else {
+                interval = Math.round(interval * easeFactor);
+            }
+        } else if (quality === 3) {
+            // Easy
+            if (reviewCount === 0) {
+                interval = 4;
+            } else {
+                interval = Math.round(interval * easeFactor * 1.3);
+            }
+            easeFactor = easeFactor + 0.15;
+        }
+
+        const nextReview = new Date();
+        nextReview.setDate(nextReview.getDate() + interval);
+
+        return await this.updateCard(id, {
+            interval,
+            easeFactor,
+            reviewCount: reviewCount + 1,
+            lastReview: new Date().toISOString(),
+            nextReview: nextReview.toISOString()
+        });
+    },
+
     async updateCollectionStats(collectionId) {
         const cards = this.getCards(collectionId);
         const mastered = cards.filter(c => c.easeFactor >= 2.5).length;
