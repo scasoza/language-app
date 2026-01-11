@@ -512,8 +512,10 @@ Respond ONLY with valid JSON:
      * @param {string} style - Style instructions (optional)
      * @returns {Promise<string>} - Base64 audio data URL
      */
-    async generateTTS(text, voice = 'Kore', style = '') {
-        console.log(`🎙️ GeminiService.generateTTS called`);
+    async generateTTS(text, voice = 'Kore', style = '', retryCount = 0) {
+        const maxRetries = 3;
+
+        console.log(`🎙️ GeminiService.generateTTS called (attempt ${retryCount + 1}/${maxRetries + 1})`);
         console.log(`   - Text: "${text}"`);
         console.log(`   - Voice: ${voice}`);
         console.log(`   - Model: ${this.MODELS.TTS}`);
@@ -550,7 +552,22 @@ Respond ONLY with valid JSON:
             return audioData;
 
         } catch (error) {
-            console.error(`❌ TTS generation failed:`, error);
+            // Check if it's a transient "OTHER" error that we should retry
+            const isTransientError = error.message && error.message.includes('finishReason: "OTHER"');
+
+            if (isTransientError && retryCount < maxRetries) {
+                const waitTime = 1000 * (retryCount + 1); // 1s, 2s, 3s
+                console.warn(`⚠️ Transient API error, retrying in ${waitTime}ms... (${retryCount + 1}/${maxRetries})`);
+
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+
+                // Retry recursively
+                return this.generateTTS(text, voice, style, retryCount + 1);
+            }
+
+            // Max retries reached or non-retryable error
+            console.error(`❌ TTS generation failed after ${retryCount + 1} attempts:`, error);
             console.error(`❌ Error details:`, error.message, error.stack);
             throw error;
         }
