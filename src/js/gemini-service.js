@@ -129,25 +129,58 @@ const GeminiService = {
 
     // Extract audio from TTS response and convert PCM to WAV
     extractAudio(response) {
+        console.log('🔍 extractAudio: parsing API response');
+
+        if (!response) {
+            console.error('❌ Response is null/undefined');
+            return null;
+        }
+
+        if (!response.candidates || response.candidates.length === 0) {
+            console.error('❌ No candidates in response:', response);
+            return null;
+        }
+
         const part = response?.candidates?.[0]?.content?.parts?.[0];
-        if (!part?.inlineData?.data) return null;
+        if (!part) {
+            console.error('❌ No parts in response');
+            return null;
+        }
+
+        if (!part.inlineData || !part.inlineData.data) {
+            console.error('❌ No inlineData in part:', part);
+            return null;
+        }
 
         const base64Data = part.inlineData.data;
         const mimeType = part.inlineData.mimeType || 'audio/L16;rate=24000';
 
+        console.log(`📦 Audio data found:`);
+        console.log(`   - MIME type: ${mimeType}`);
+        console.log(`   - Data size: ${base64Data.length} chars`);
+
         // If it's already a standard format, return directly
         if (mimeType.includes('wav') || mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+            console.log('✅ Using audio as-is (standard format)');
             return `data:${mimeType};base64,${base64Data}`;
         }
 
         // Convert PCM (L16) to WAV for browser playback
+        console.log('🔄 Converting PCM to WAV...');
         try {
             const pcmData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            console.log(`   - PCM data size: ${pcmData.length} bytes`);
+
             const wavData = this.pcmToWav(pcmData, 24000, 1, 16);
+            console.log(`   - WAV data size: ${wavData.byteLength} bytes`);
+
             const wavBase64 = btoa(String.fromCharCode(...new Uint8Array(wavData)));
+            console.log('✅ Conversion successful');
+
             return `data:audio/wav;base64,${wavBase64}`;
         } catch (e) {
-            console.error('Audio conversion error:', e);
+            console.error('❌ Audio conversion error:', e);
+            console.log('⚠️ Trying fallback: using raw data');
             // Fallback: try to play as-is
             return `data:audio/wav;base64,${base64Data}`;
         }
@@ -445,6 +478,11 @@ Respond ONLY with valid JSON:
      * @returns {Promise<string>} - Base64 audio data URL
      */
     async generateTTS(text, voice = 'Kore', style = '') {
+        console.log(`🎙️ GeminiService.generateTTS called`);
+        console.log(`   - Text: "${text}"`);
+        console.log(`   - Voice: ${voice}`);
+        console.log(`   - Model: ${this.MODELS.TTS}`);
+
         let prompt = text;
         if (style) {
             prompt = `${style}\n\nText: ${text}`;
@@ -456,12 +494,28 @@ Respond ONLY with valid JSON:
             }
         };
 
-        const response = await this.callAPI(this.MODELS.TTS, prompt, {
-            speechConfig,
-            temperature: 0.3
-        });
+        try {
+            const response = await this.callAPI(this.MODELS.TTS, prompt, {
+                speechConfig,
+                temperature: 0.3
+            });
 
-        return this.extractAudio(response);
+            console.log(`📡 TTS API response received`);
+
+            const audioData = this.extractAudio(response);
+
+            if (!audioData) {
+                console.error('❌ extractAudio returned null/empty');
+                throw new Error('Failed to extract audio from API response');
+            }
+
+            console.log(`✅ Audio extracted successfully, length: ${audioData.length}`);
+            return audioData;
+
+        } catch (error) {
+            console.error(`❌ TTS generation failed:`, error);
+            throw error;
+        }
     },
 
     /**
