@@ -76,12 +76,29 @@ const DataStore = {
 
     // User methods
     getUser() {
-        return this.user || {
-            name: 'Guest',
-            level: 1,
-            targetLanguage: 'Spanish',
-            nativeLanguage: 'English',
-            settings: { darkMode: true }
+        if (!this.user) {
+            return {
+                name: 'Guest',
+                level: 1,
+                targetLanguage: 'Spanish',
+                nativeLanguage: 'English',
+                settings: {
+                    darkMode: true,
+                    audioAutoplay: true,
+                    notifications: true
+                }
+            };
+        }
+
+        // Ensure settings object has all default properties
+        return {
+            ...this.user,
+            settings: {
+                darkMode: true,
+                audioAutoplay: true,
+                notifications: true,
+                ...this.user.settings
+            }
         };
     },
 
