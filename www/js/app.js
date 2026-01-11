@@ -427,6 +427,7 @@ const app = {
     // Voice input for creating collections
     recognition: null,
     isListening: false,
+    voiceInputBaseText: '', // Store the text that was there before voice input started
 
     startVoiceInput() {
         // Check browser support
@@ -442,11 +443,14 @@ const app = {
         if (!this.recognition) {
             this.recognition = new SpeechRecognition();
             this.recognition.continuous = true;
-            this.recognition.interimResults = true;
+            this.recognition.interimResults = false; // Only final results to avoid duplication
             this.recognition.lang = 'en-US';
 
             this.recognition.onstart = () => {
                 this.isListening = true;
+                // Save the current text as baseline
+                this.voiceInputBaseText = topicInput.value;
+
                 voiceBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
                 voiceBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
                 voiceBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
@@ -454,19 +458,19 @@ const app = {
             };
 
             this.recognition.onresult = (event) => {
-                let finalTranscript = '';
-
-                // Only get the latest result to avoid duplication
-                for (let i = event.resultIndex; i < event.results.length; i++) {
+                // Build complete transcript from ALL final results in this session
+                let completeTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
+                        completeTranscript += event.results[i][0].transcript + ' ';
                     }
                 }
 
-                if (finalTranscript) {
-                    // Append only the new final transcript
-                    const currentValue = topicInput.value.trim();
-                    topicInput.value = currentValue ? currentValue + ' ' + finalTranscript.trim() : finalTranscript.trim();
+                if (completeTranscript) {
+                    // Update field: base text + space (if needed) + complete transcript
+                    const trimmedBase = this.voiceInputBaseText.trim();
+                    const separator = (trimmedBase && !trimmedBase.endsWith(' ')) ? ' ' : '';
+                    topicInput.value = trimmedBase + separator + completeTranscript.trim();
                 }
             };
 
