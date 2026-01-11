@@ -4,12 +4,20 @@
 
 const SettingsScreen = {
     render() {
-        const user = DataStore.getUser();
-        const stats = DataStore.getStats();
-        const apiConfigured = GeminiService.isConfigured();
-
+        console.log('SettingsScreen.render() called');
         const container = document.getElementById('screen-settings');
-        container.innerHTML = `
+
+        if (!container) {
+            console.error('screen-settings container not found!');
+            return;
+        }
+
+        try {
+            const user = DataStore.getUser();
+            const stats = DataStore.getStats();
+            const apiConfigured = GeminiService.isConfigured();
+
+            container.innerHTML = `
             <!-- Top App Bar -->
             <header class="sticky top-0 z-50 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-3 justify-between border-b border-slate-200 dark:border-slate-800">
                 <button onclick="app.goBack()" class="text-slate-900 dark:text-white hover:text-primary transition-colors flex size-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -174,6 +182,23 @@ const SettingsScreen = {
                 </div>
             </main>
         `;
+        } catch (error) {
+            console.error('Error rendering settings screen:', error);
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen p-6 text-center">
+                    <div class="mb-8">
+                        <span class="material-symbols-outlined text-6xl text-rose-400">error</span>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-2">Settings Error</h1>
+                    <p class="text-slate-400 mb-4 max-w-xs">Could not load settings.</p>
+                    <p class="text-xs text-slate-500 mb-8 font-mono">${error.message || 'Unknown error'}</p>
+                    <button onclick="app.navigate('home')" class="bg-primary text-background-dark font-bold py-4 px-6 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined inline-block mr-2">home</span>
+                        Back to Home
+                    </button>
+                </div>
+            `;
+        }
     },
 
     setDailyGoal(goal) {
