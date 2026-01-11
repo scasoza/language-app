@@ -154,6 +154,28 @@ const GeminiService = {
             return null;
         }
 
+        const candidate = response.candidates[0];
+
+        // Check for safety blocks or other finish reasons
+        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+            console.error(`❌ Request failed with finishReason: ${candidate.finishReason}`);
+            if (candidate.safetyRatings) {
+                console.error('⚠️ Safety ratings:', candidate.safetyRatings);
+            }
+            if (candidate.finishMessage) {
+                console.error('⚠️ Finish message:', candidate.finishMessage);
+            }
+
+            // Provide helpful error message
+            let errorMsg = `API returned finishReason: "${candidate.finishReason}". `;
+            if (candidate.finishReason === 'OTHER') {
+                errorMsg += 'This may mean: (1) TTS not enabled for your API key, (2) Quota/billing issue, or (3) API temporary issue. Try regenerating your API key at ai.google.dev or check quota limits.';
+            } else {
+                errorMsg += 'TTS generation failed for unknown reason.';
+            }
+            throw new Error(errorMsg);
+        }
+
         const part = response?.candidates?.[0]?.content?.parts?.[0];
         if (!part) {
             console.error('❌ No parts in response');
