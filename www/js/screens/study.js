@@ -53,6 +53,11 @@ const StudyScreen = {
                 good: 0,
                 easy: 0
             };
+
+            // Prefetch audio for first 3 cards in background
+            if (GeminiService.isConfigured() && this.cards.length > 0) {
+                this.prefetchAudio();
+            }
         } catch (error) {
             console.error('Error in StudyScreen.init():', error);
             // Set safe defaults
@@ -67,6 +72,30 @@ const StudyScreen = {
                 good: 0,
                 easy: 0
             };
+        }
+    },
+
+    // Prefetch audio for upcoming cards
+    async prefetchAudio() {
+        const maxPrefetch = Math.min(3, this.cards.length);
+        console.log(`Prefetching audio for ${maxPrefetch} cards...`);
+
+        for (let i = 0; i < maxPrefetch; i++) {
+            const card = this.cards[i];
+            if (card && !card.audio && card.front) {
+                try {
+                    console.log(`Prefetching audio for card ${i + 1}: "${card.front}"`);
+                    const audioData = await GeminiService.generateTTS(card.front);
+                    if (audioData) {
+                        await DataStore.updateCard(card.id, { audio: audioData });
+                        card.audio = audioData;
+                        console.log(`Audio prefetched for card ${i + 1}`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to prefetch audio for card ${i + 1}:`, error);
+                    // Continue with next card even if one fails
+                }
+            }
         }
     },
 
@@ -173,6 +202,7 @@ const StudyScreen = {
                                         <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5">
                                             <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-2 text-left">Example</p>
                                             <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${card.example}</p>
+                                            ${card.exampleReading ? `<p class="text-sm text-primary/70 mt-1">${card.exampleReading}</p>` : ''}
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
                                         </div>
                                     ` : ''}
@@ -404,6 +434,20 @@ const StudyScreen = {
         this.currentIndex++;
         this.isFlipped = false;
 
+        // Prefetch audio for next card in background
+        if (GeminiService.isConfigured() && this.currentIndex < this.cards.length) {
+            const nextCard = this.cards[this.currentIndex];
+            if (nextCard && !nextCard.audio && nextCard.front) {
+                GeminiService.generateTTS(nextCard.front).then(async audioData => {
+                    if (audioData) {
+                        await DataStore.updateCard(nextCard.id, { audio: audioData });
+                        nextCard.audio = audioData;
+                        console.log('Prefetched audio for next card');
+                    }
+                }).catch(err => console.error('Prefetch failed:', err));
+            }
+        }
+
         this.render();
     },
 
@@ -416,28 +460,54 @@ const StudyScreen = {
 
             // Generate TTS if no audio exists
             if (!audioData && GeminiService.isConfigured()) {
+                const toastId = Date.now();
                 app.showToast('Generating pronunciation...', 'info');
-                audioData = await GeminiService.generateTTS(card.front);
 
-                // Save audio to card for future use (saves to Supabase!)
-                if (audioData) {
-                    console.log('Saving generated audio to card:', card.id);
-                    await DataStore.updateCard(card.id, { audio: audioData });
-                    card.audio = audioData;
-                    app.showToast('Pronunciation saved!', 'success');
-                    this.render(); // Re-render to show replay button
+                // Add timeout to prevent hanging
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout')), 15000)
+                );
+
+                try {
+                    audioData = await Promise.race([
+                        GeminiService.generateTTS(card.front),
+                        timeoutPromise
+                    ]);
+
+                    // Save audio to card for future use (saves to Supabase!)
+                    if (audioData) {
+                        console.log('Saving generated audio to card:', card.id);
+                        await DataStore.updateCard(card.id, { audio: audioData });
+                        card.audio = audioData;
+                        console.log('Audio saved successfully');
+                        app.showToast('Pronunciation ready!', 'success');
+                    } else {
+                        throw new Error('No audio data returned');
+                    }
+                } catch (genError) {
+                    if (genError.message === 'Timeout') {
+                        console.error('TTS generation timed out after 15s');
+                        app.showToast('Audio generation timed out. Try again.', 'error');
+                    } else {
+                        throw genError;
+                    }
+                    return;
                 }
             }
 
             // Play audio
             if (audioData) {
+                console.log('Playing audio...');
                 const audio = new Audio(audioData);
-                audio.play().catch(e => {
+                await audio.play().catch(e => {
                     console.error('Audio playback failed:', e);
                     app.showToast('Could not play audio', 'error');
                 });
+                console.log('Audio played successfully');
             } else if (!GeminiService.isConfigured()) {
                 app.showToast('Configure Gemini API key to enable pronunciation', 'info');
+            } else {
+                console.warn('No audio data available');
             }
         } catch (error) {
             console.error('TTS error:', error);
