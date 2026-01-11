@@ -197,6 +197,9 @@ const GeminiService = {
     async generateFlashcards(input) {
         const { text, image, targetLanguage = 'Spanish', nativeLanguage = 'English', count = 5 } = input;
 
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
         const prompt = `You are a language learning expert. Generate ${count} flashcards for learning ${targetLanguage} from ${nativeLanguage}.
 
 ${image ? 'Based on the image provided, ' : ''}Generate flashcards for: "${text}"
@@ -204,20 +207,20 @@ ${image ? 'Based on the image provided, ' : ''}Generate flashcards for: "${text}
 For each flashcard, provide:
 1. front: The word/phrase in ${targetLanguage}
 2. back: The translation in ${nativeLanguage}
-3. reading: Phonetic pronunciation guide
+3. reading: ${readingGuide} pronunciation guide
 4. example: An example sentence using the word in ${targetLanguage}
-5. exampleTranslation: Translation of the example sentence
+5. exampleTranslation: Translation of the example sentence${isChinese ? '\n6. exampleReading: Pinyin for the example sentence' : ''}
 
 Respond ONLY with a valid JSON array of flashcard objects. No markdown, no explanation.
 
 Example format:
 [
   {
-    "front": "Hola",
+    "front": "${isChinese ? '你好' : 'Hola'}",
     "back": "Hello",
-    "reading": "OH-lah",
-    "example": "¡Hola, ¿cómo estás?",
-    "exampleTranslation": "Hello, how are you?"
+    "reading": "${isChinese ? 'nǐ hǎo' : 'OH-lah'}",
+    "example": "${isChinese ? '你好，你好吗？' : '¡Hola, ¿cómo estás?'}",
+    "exampleTranslation": "Hello, how are you?"${isChinese ? ',\n    "exampleReading": "nǐ hǎo, nǐ hǎo ma?"' : ''}
   }
 ]`;
 
@@ -260,6 +263,9 @@ Example format:
     async generateCollection(input) {
         const { topic, image, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount = 10 } = input;
 
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
         const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
 
 Topic: "${topic}"
@@ -269,7 +275,7 @@ Generate a collection with:
 1. name: A catchy collection name
 2. emoji: A single relevant emoji
 3. description: A brief description (1 sentence)
-4. cards: ${cardCount} flashcards with front, back, reading, example, exampleTranslation
+4. cards: ${cardCount} flashcards with front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
 
 Respond ONLY with valid JSON. No markdown, no explanation.
 
@@ -282,9 +288,9 @@ Format:
     {
       "front": "word in ${targetLanguage}",
       "back": "translation in ${nativeLanguage}",
-      "reading": "phonetic",
-      "example": "example sentence",
-      "exampleTranslation": "translated example"
+      "reading": "${readingGuide} for the word",
+      "example": "example sentence in ${targetLanguage}",
+      "exampleTranslation": "translated example in ${nativeLanguage}"${isChinese ? ',\n      "exampleReading": "pinyin for the example sentence"' : ''}
     }
   ]
 }`;
