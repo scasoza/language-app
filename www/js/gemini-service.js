@@ -104,20 +104,33 @@ const GeminiService = {
         }
 
         try {
+            console.log(`🌐 Calling API: ${url.substring(0, 100)}...`);
+            console.log(`📤 Request body:`, JSON.stringify(body, null, 2));
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
+            console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'API request failed');
+                const errorText = await response.text();
+                console.error(`❌ API error response:`, errorText);
+                let errorMessage = 'API request failed';
+                try {
+                    const error = JSON.parse(errorText);
+                    errorMessage = error.error?.message || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText.substring(0, 200);
+                }
+                throw new Error(errorMessage);
             }
 
             return await response.json();
         } catch (error) {
-            console.error('Gemini API Error:', error);
+            console.error('❌ Gemini API Error:', error);
             throw error;
         }
     },
@@ -501,11 +514,13 @@ Respond ONLY with valid JSON:
             });
 
             console.log(`📡 TTS API response received`);
+            console.log(`📋 Full response structure:`, JSON.stringify(response, null, 2));
 
             const audioData = this.extractAudio(response);
 
             if (!audioData) {
                 console.error('❌ extractAudio returned null/empty');
+                console.error('❌ Response details:', JSON.stringify(response));
                 throw new Error('Failed to extract audio from API response');
             }
 
@@ -514,6 +529,7 @@ Respond ONLY with valid JSON:
 
         } catch (error) {
             console.error(`❌ TTS generation failed:`, error);
+            console.error(`❌ Error details:`, error.message, error.stack);
             throw error;
         }
     },
