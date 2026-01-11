@@ -464,14 +464,19 @@ const StudyScreen = {
                 app.showToast('Generating pronunciation...', 'info');
                 console.log(`🎙️ Generating TTS for: "${card.front}"`);
 
+                // Get target language for proper voice selection
+                const user = DataStore.getUser();
+                const targetLanguage = user ? user.targetLanguage : 'Chinese';
+
                 try {
-                    // Increase timeout to 20 seconds
+                    // Use Cloud TTS for flashcards (more reliable than Gemini TTS)
+                    // Timeout: 10 seconds (Cloud TTS is faster than Gemini)
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Timeout')), 20000)
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
                     );
 
                     audioData = await Promise.race([
-                        GeminiService.generateTTS(card.front),
+                        GeminiService.generateCloudTTS(card.front, targetLanguage),
                         timeoutPromise
                     ]);
 
@@ -479,7 +484,7 @@ const StudyScreen = {
                         throw new Error('API returned empty audio data');
                     }
 
-                    console.log(`✅ TTS generated successfully, audio data length: ${audioData.length}`);
+                    console.log(`✅ Cloud TTS generated successfully, audio data length: ${audioData.length}`);
 
                     // Save audio to card for future use
                     await DataStore.updateCard(card.id, { audio: audioData });
@@ -489,8 +494,8 @@ const StudyScreen = {
 
                 } catch (genError) {
                     if (genError.message === 'Timeout') {
-                        console.error('❌ TTS generation timed out after 20s');
-                        app.showToast('Audio generation taking too long. Please try again.', 'error');
+                        console.error('❌ Cloud TTS generation timed out after 10s');
+                        app.showToast('Audio generation timed out. Please try again.', 'error');
                     } else if (genError.message.includes('API key')) {
                         console.error('❌ API key error:', genError);
                         app.showToast('Invalid API key. Please check Settings.', 'error');

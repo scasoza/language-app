@@ -2,7 +2,8 @@
  * Gemini API Service for LinguaFlow
  * Handles AI-powered features:
  * - Collection creation with Gemini 3 Flash (multimodal)
- * - Dialogue audio generation with Gemini 2.5 Flash TTS
+ * - Dialogue audio generation with Gemini 2.5 Flash TTS (contextual, expressive)
+ * - Flashcard audio with Google Cloud TTS (reliable, language-specific)
  */
 
 const GeminiService = {
@@ -26,8 +27,22 @@ const GeminiService = {
 
     // Available TTS voices
     VOICES: {
-        male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
-        female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
+        // Gemini TTS voices (for dialogues - expressive, contextual)
+        gemini: {
+            male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
+            female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
+        },
+        // Cloud TTS voices (for flashcards - reliable, language-specific)
+        cloudTTS: {
+            'Chinese': 'cmn-CN-Wavenet-A',
+            'Spanish': 'es-ES-Wavenet-B',
+            'French': 'fr-FR-Wavenet-A',
+            'German': 'de-DE-Wavenet-A',
+            'Japanese': 'ja-JP-Wavenet-A',
+            'Korean': 'ko-KR-Wavenet-A',
+            'Italian': 'it-IT-Wavenet-A',
+            'Portuguese': 'pt-BR-Wavenet-A'
+        }
     },
 
     // Set API key
@@ -152,6 +167,28 @@ const GeminiService = {
         if (!response.candidates || response.candidates.length === 0) {
             console.error('❌ No candidates in response:', response);
             return null;
+        }
+
+        const candidate = response.candidates[0];
+
+        // Check for safety blocks or other finish reasons
+        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+            console.error(`❌ Request failed with finishReason: ${candidate.finishReason}`);
+            if (candidate.safetyRatings) {
+                console.error('⚠️ Safety ratings:', candidate.safetyRatings);
+            }
+            if (candidate.finishMessage) {
+                console.error('⚠️ Finish message:', candidate.finishMessage);
+            }
+
+            // Provide helpful error message
+            let errorMsg = `API returned finishReason: "${candidate.finishReason}". `;
+            if (candidate.finishReason === 'OTHER') {
+                errorMsg += 'This may mean: (1) TTS not enabled for your API key, (2) Quota/billing issue, or (3) API temporary issue. Try regenerating your API key at ai.google.dev or check quota limits.';
+            } else {
+                errorMsg += 'TTS generation failed for unknown reason.';
+            }
+            throw new Error(errorMsg);
         }
 
         const part = response?.candidates?.[0]?.content?.parts?.[0];
@@ -490,8 +527,10 @@ Respond ONLY with valid JSON:
      * @param {string} style - Style instructions (optional)
      * @returns {Promise<string>} - Base64 audio data URL
      */
-    async generateTTS(text, voice = 'Kore', style = '') {
-        console.log(`🎙️ GeminiService.generateTTS called`);
+    async generateTTS(text, voice = 'Kore', style = '', retryCount = 0) {
+        const maxRetries = 3;
+
+        console.log(`🎙️ GeminiService.generateTTS called (attempt ${retryCount + 1}/${maxRetries + 1})`);
         console.log(`   - Text: "${text}"`);
         console.log(`   - Voice: ${voice}`);
         console.log(`   - Model: ${this.MODELS.TTS}`);
@@ -528,8 +567,95 @@ Respond ONLY with valid JSON:
             return audioData;
 
         } catch (error) {
-            console.error(`❌ TTS generation failed:`, error);
+            // Check if it's a transient "OTHER" error that we should retry
+            const isTransientError = error.message && error.message.includes('finishReason: "OTHER"');
+
+            if (isTransientError && retryCount < maxRetries) {
+                const waitTime = 1000 * (retryCount + 1); // 1s, 2s, 3s
+                console.warn(`⚠️ Transient API error, retrying in ${waitTime}ms... (${retryCount + 1}/${maxRetries})`);
+
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+
+                // Retry recursively
+                return this.generateTTS(text, voice, style, retryCount + 1);
+            }
+
+            // Max retries reached or non-retryable error
+            console.error(`❌ TTS generation failed after ${retryCount + 1} attempts:`, error);
             console.error(`❌ Error details:`, error.message, error.stack);
+            throw error;
+        }
+    },
+
+    /**
+     * Generate TTS using Google Cloud Text-to-Speech (for flashcards)
+     * More reliable than Gemini TTS, better for simple/repetitive audio
+     * @param {string} text - Text to convert to speech
+     * @param {string} language - Target language (e.g., 'Chinese', 'Spanish')
+     * @returns {Promise<string>} - Base64 audio data URL
+     */
+    async generateCloudTTS(text, language = 'Chinese') {
+        console.log(`🔊 GeminiService.generateCloudTTS called`);
+        console.log(`   - Text: "${text}"`);
+        console.log(`   - Language: ${language}`);
+
+        const apiKey = this.getApiKey();
+        if (!apiKey) {
+            throw new Error('Gemini API key not configured');
+        }
+
+        // Get voice for target language
+        const voiceName = this.VOICES.cloudTTS[language] || 'cmn-CN-Wavenet-A';
+        const languageCode = voiceName.split('-').slice(0, 2).join('-'); // e.g., 'cmn-CN'
+
+        const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+
+        const requestBody = {
+            input: { text },
+            voice: {
+                languageCode,
+                name: voiceName
+            },
+            audioConfig: {
+                audioEncoding: 'MP3',
+                speakingRate: 1.0,
+                pitch: 0.0
+            }
+        };
+
+        try {
+            console.log(`🌐 Calling Cloud TTS API...`);
+            console.log(`📤 Request body:`, JSON.stringify(requestBody, null, 2));
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ Cloud TTS API error:`, errorText);
+                throw new Error(`Cloud TTS failed: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.audioContent) {
+                console.error('❌ No audioContent in response:', data);
+                throw new Error('No audio data returned from Cloud TTS');
+            }
+
+            console.log(`✅ Cloud TTS audio generated, size: ${data.audioContent.length} chars`);
+
+            // Return as data URL (already MP3, no conversion needed!)
+            return `data:audio/mp3;base64,${data.audioContent}`;
+
+        } catch (error) {
+            console.error(`❌ Cloud TTS generation failed:`, error);
             throw error;
         }
     },

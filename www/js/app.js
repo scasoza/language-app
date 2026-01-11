@@ -624,6 +624,42 @@ const app = {
     clearDebugConsole() {
         this.debugLogs = [];
         this.renderDebugConsole();
+    },
+
+    copyDebugLogs() {
+        const logsText = this.debugLogs.map(log =>
+            `[${log.timestamp}] ${log.message}`
+        ).join('\n');
+
+        // Try to copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(logsText).then(() => {
+                app.showToast('Logs copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                this.fallbackCopyDebugLogs(logsText);
+            });
+        } else {
+            this.fallbackCopyDebugLogs(logsText);
+        }
+    },
+
+    fallbackCopyDebugLogs(text) {
+        // Fallback for browsers without clipboard API
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            app.showToast('Logs copied!', 'success');
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            app.showToast('Could not copy. Please select all and copy manually.', 'error');
+        }
+        document.body.removeChild(textarea);
     }
 };
 
