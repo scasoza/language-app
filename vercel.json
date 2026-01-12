@@ -4,7 +4,7 @@
   "name": "linguaflow",
   "public": true,
   "buildCommand": null,
-  "outputDirectory": "www",
+  "outputDirectory": ".",
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
