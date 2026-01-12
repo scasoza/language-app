@@ -465,8 +465,9 @@ const StudyScreen = {
                 console.log(`🎙️ Generating TTS for: "${card.front}"`);
 
                 // Get target language for proper voice selection
+                const collection = DataStore.getCollection(card.collectionId);
                 const user = DataStore.getUser();
-                const targetLanguage = user ? user.targetLanguage : 'Chinese';
+                const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
 
                 try {
                     // Try Cloud TTS first (more reliable, language-specific)
