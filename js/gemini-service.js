@@ -602,6 +602,11 @@ Respond ONLY with valid JSON:
 
         // Get Supabase URL
         const supabaseUrl = window.SUPABASE_URL || localStorage.getItem('supabase_url');
+        console.log(`🔍 Supabase URL check:`);
+        console.log(`   - window.SUPABASE_URL: ${window.SUPABASE_URL || '(not set)'}`);
+        console.log(`   - localStorage.supabase_url: ${localStorage.getItem('supabase_url') || '(not set)'}`);
+        console.log(`   - Using: ${supabaseUrl || '(NONE - will error)'}`);
+
         if (!supabaseUrl) {
             throw new Error('Supabase not configured');
         }
@@ -612,6 +617,7 @@ Respond ONLY with valid JSON:
 
         // Call Supabase Edge Function
         const functionUrl = `${supabaseUrl}/functions/v1/cloud-tts`;
+        console.log(`🎯 Final function URL: ${functionUrl}`);
 
         const requestBody = {
             text,
