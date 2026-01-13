@@ -2,8 +2,7 @@
  * Gemini API Service for LinguaFlow
  * Handles AI-powered features:
  * - Collection creation with Gemini 3 Flash (multimodal)
- * - Dialogue audio generation with Gemini 2.5 Flash TTS (contextual, expressive)
- * - Flashcard audio with Google Cloud TTS (reliable, language-specific)
+ * - Dialogue audio generation with Gemini 2.5 Flash TTS
  */
 
 const GeminiService = {
@@ -27,22 +26,8 @@ const GeminiService = {
 
     // Available TTS voices
     VOICES: {
-        // Gemini TTS voices (for dialogues - expressive, contextual)
-        gemini: {
-            male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
-            female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
-        },
-        // Cloud TTS voices (for flashcards - reliable, language-specific)
-        cloudTTS: {
-            'Chinese': 'cmn-CN-Wavenet-A',
-            'Spanish': 'es-ES-Wavenet-B',
-            'French': 'fr-FR-Wavenet-A',
-            'German': 'de-DE-Wavenet-A',
-            'Japanese': 'ja-JP-Wavenet-A',
-            'Korean': 'ko-KR-Wavenet-A',
-            'Italian': 'it-IT-Wavenet-A',
-            'Portuguese': 'pt-BR-Wavenet-A'
-        }
+        male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
+        female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
     },
 
     // Set API key
@@ -119,33 +104,20 @@ const GeminiService = {
         }
 
         try {
-            console.log(`🌐 Calling API: ${url.substring(0, 100)}...`);
-            console.log(`📤 Request body:`, JSON.stringify(body, null, 2));
-
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
-            console.log(`📥 Response status: ${response.status} ${response.statusText}`);
-
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`❌ API error response:`, errorText);
-                let errorMessage = 'API request failed';
-                try {
-                    const error = JSON.parse(errorText);
-                    errorMessage = error.error?.message || errorMessage;
-                } catch (e) {
-                    errorMessage = errorText.substring(0, 200);
-                }
-                throw new Error(errorMessage);
+                const error = await response.json();
+                throw new Error(error.error?.message || 'API request failed');
             }
 
             return await response.json();
         } catch (error) {
-            console.error('❌ Gemini API Error:', error);
+            console.error('Gemini API Error:', error);
             throw error;
         }
     },
@@ -167,28 +139,6 @@ const GeminiService = {
         if (!response.candidates || response.candidates.length === 0) {
             console.error('❌ No candidates in response:', response);
             return null;
-        }
-
-        const candidate = response.candidates[0];
-
-        // Check for safety blocks or other finish reasons
-        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-            console.error(`❌ Request failed with finishReason: ${candidate.finishReason}`);
-            if (candidate.safetyRatings) {
-                console.error('⚠️ Safety ratings:', candidate.safetyRatings);
-            }
-            if (candidate.finishMessage) {
-                console.error('⚠️ Finish message:', candidate.finishMessage);
-            }
-
-            // Provide helpful error message
-            let errorMsg = `API returned finishReason: "${candidate.finishReason}". `;
-            if (candidate.finishReason === 'OTHER') {
-                errorMsg += 'This may mean: (1) TTS not enabled for your API key, (2) Quota/billing issue, or (3) API temporary issue. Try regenerating your API key at ai.google.dev or check quota limits.';
-            } else {
-                errorMsg += 'TTS generation failed for unknown reason.';
-            }
-            throw new Error(errorMsg);
         }
 
         const part = response?.candidates?.[0]?.content?.parts?.[0];
@@ -335,6 +285,108 @@ Example format:
         } catch (e) {
             console.error('Failed to parse flashcards:', e, text_response);
             throw new Error('Failed to generate flashcards. Please try again.');
+        }
+    },
+
+    /**
+     * Generate a collection with multimodal inputs (text, audio, images) using Gemini 3 Flash
+     * @param {Object} input - { topic?: string, audio?: base64, image?: base64, text?: string, targetLanguage: string, nativeLanguage: string, cardCount?: number }
+     * @returns {Promise<Object>} - Collection metadata and cards
+     */
+    async generateCollectionMultimodal(input) {
+        const { topic, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount } = input;
+
+        // Validate inputs - images cannot be used alone
+        if (image && !audio && !text && !topic) {
+            throw new Error('Images cannot be used alone. Please provide text or audio along with images.');
+        }
+
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
+        // Build dynamic prompt based on available inputs
+        let inputDescription = '';
+        if (topic) inputDescription += `Topic: "${topic}"\n`;
+        if (text) inputDescription += `User input: "${text}"\n`;
+        if (audio) inputDescription += 'Audio input provided.\n';
+        if (image) inputDescription += 'Image provided for context.\n';
+
+        const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
+
+${inputDescription}
+
+IMPORTANT: First, check if the user has specified how many cards they want in their input (audio or text).
+- If they specify a number (e.g., "create 15 cards", "I want 20 flashcards"), use that number.
+- If no number is specified, use the default: ${cardCount || 10} cards.
+
+Generate a collection with:
+1. name: A catchy collection name based on the content
+2. emoji: A single relevant emoji
+3. description: A brief description (1 sentence)
+4. cardCount: The number of cards to generate (extracted from user input or default)
+5. cards: Generate exactly the number of flashcards specified, each with:
+   - front: word/phrase in ${targetLanguage}
+   - back: translation in ${nativeLanguage}
+   - reading: ${readingGuide} pronunciation guide
+   - example: example sentence in ${targetLanguage}
+   - exampleTranslation: translated example in ${nativeLanguage}${isChinese ? '\n   - exampleReading: pinyin for the example sentence' : ''}
+
+Respond ONLY with valid JSON. No markdown, no explanation.
+
+Format:
+{
+  "name": "Collection Name",
+  "emoji": "🌮",
+  "description": "Learn food vocabulary",
+  "cardCount": 10,
+  "cards": [
+    {
+      "front": "word in ${targetLanguage}",
+      "back": "translation in ${nativeLanguage}",
+      "reading": "${readingGuide} for the word",
+      "example": "example sentence in ${targetLanguage}",
+      "exampleTranslation": "translated example in ${nativeLanguage}"${isChinese ? ',\n      "exampleReading": "pinyin for the example sentence"' : ''}
+    }
+  ]
+}`;
+
+        // Build multimodal content array
+        const contents = [{ parts: [{ text: prompt }] }];
+
+        // Add audio if provided (send directly without transcription)
+        if (audio) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: this.detectAudioMimeType(audio),
+                    data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        // Add image if provided
+        if (image) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        const response = await this.callAPI(this.MODELS.FLASH, contents, {
+            temperature: 0.7,
+            maxTokens: 8192,
+            thinkingLevel: this.THINKING_LEVELS.MEDIUM
+        });
+
+        const text_response = this.extractText(response);
+
+        try {
+            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('Failed to parse collection:', e, text_response);
+            throw new Error('Failed to generate collection. Please try again.');
         }
     },
 
@@ -527,10 +579,8 @@ Respond ONLY with valid JSON:
      * @param {string} style - Style instructions (optional)
      * @returns {Promise<string>} - Base64 audio data URL
      */
-    async generateTTS(text, voice = 'Kore', style = '', retryCount = 0) {
-        const maxRetries = 3;
-
-        console.log(`🎙️ GeminiService.generateTTS called (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    async generateTTS(text, voice = 'Kore', style = '') {
+        console.log(`🎙️ GeminiService.generateTTS called`);
         console.log(`   - Text: "${text}"`);
         console.log(`   - Voice: ${voice}`);
         console.log(`   - Model: ${this.MODELS.TTS}`);
@@ -553,13 +603,11 @@ Respond ONLY with valid JSON:
             });
 
             console.log(`📡 TTS API response received`);
-            console.log(`📋 Full response structure:`, JSON.stringify(response, null, 2));
 
             const audioData = this.extractAudio(response);
 
             if (!audioData) {
                 console.error('❌ extractAudio returned null/empty');
-                console.error('❌ Response details:', JSON.stringify(response));
                 throw new Error('Failed to extract audio from API response');
             }
 
@@ -567,96 +615,7 @@ Respond ONLY with valid JSON:
             return audioData;
 
         } catch (error) {
-            // Check if it's a transient "OTHER" error that we should retry
-            const isTransientError = error.message && error.message.includes('finishReason: "OTHER"');
-
-            if (isTransientError && retryCount < maxRetries) {
-                const waitTime = 1000 * (retryCount + 1); // 1s, 2s, 3s
-                console.warn(`⚠️ Transient API error, retrying in ${waitTime}ms... (${retryCount + 1}/${maxRetries})`);
-
-                // Wait before retrying
-                await new Promise(resolve => setTimeout(resolve, waitTime));
-
-                // Retry recursively
-                return this.generateTTS(text, voice, style, retryCount + 1);
-            }
-
-            // Max retries reached or non-retryable error
-            console.error(`❌ TTS generation failed after ${retryCount + 1} attempts:`, error);
-            console.error(`❌ Error details:`, error.message, error.stack);
-            throw error;
-        }
-    },
-
-    /**
-     * Generate TTS using Google Cloud Text-to-Speech (for flashcards)
-     * Calls Supabase Edge Function which handles service account auth
-     * @param {string} text - Text to convert to speech
-     * @param {string} language - Target language (e.g., 'Chinese', 'Spanish')
-     * @returns {Promise<string>} - Base64 audio data URL
-     */
-    async generateCloudTTS(text, language = 'Chinese') {
-        console.log(`🔊 GeminiService.generateCloudTTS called`);
-        console.log(`   - Text: "${text}"`);
-        console.log(`   - Language: ${language}`);
-
-        // Get Supabase URL
-        const supabaseUrl = window.SUPABASE_URL || localStorage.getItem('supabase_url');
-        console.log(`🔍 Supabase URL check:`);
-        console.log(`   - window.SUPABASE_URL: ${window.SUPABASE_URL || '(not set)'}`);
-        console.log(`   - localStorage.supabase_url: ${localStorage.getItem('supabase_url') || '(not set)'}`);
-        console.log(`   - Using: ${supabaseUrl || '(NONE - will error)'}`);
-
-        if (!supabaseUrl) {
-            throw new Error('Supabase not configured');
-        }
-
-        // Get voice for target language
-        const voiceName = this.VOICES.cloudTTS[language] || 'cmn-CN-Wavenet-A';
-        const languageCode = voiceName.split('-').slice(0, 2).join('-'); // e.g., 'cmn-CN'
-
-        // Call Supabase Edge Function
-        const functionUrl = `${supabaseUrl}/functions/v1/cloud-tts`;
-        console.log(`🎯 Final function URL: ${functionUrl}`);
-
-        const requestBody = {
-            text,
-            languageCode,
-            voiceName
-        };
-
-        try {
-            console.log(`🌐 Calling Supabase Edge Function...`);
-            console.log(`📤 Request body:`, JSON.stringify(requestBody, null, 2));
-
-            const response = await fetch(functionUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            console.log(`📥 Response status: ${response.status} ${response.statusText}`);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`❌ Cloud TTS Edge Function error:`, errorText);
-                throw new Error(`Cloud TTS failed: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            if (!data.audioContent) {
-                console.error('❌ No audioContent in response:', data);
-                throw new Error('No audio data returned from Cloud TTS');
-            }
-
-            console.log(`✅ Cloud TTS audio generated, size: ${data.audioContent.length} chars`);
-
-            // Return as data URL (already MP3, no conversion needed!)
-            return `data:audio/mp3;base64,${data.audioContent}`;
-
-        } catch (error) {
-            console.error(`❌ Cloud TTS generation failed:`, error);
+            console.error(`❌ TTS generation failed:`, error);
             throw error;
         }
     },
@@ -680,6 +639,115 @@ Text: "${text}"`;
         });
 
         return this.extractText(response).trim();
+    },
+
+    /**
+     * Edit a collection using AI with multimodal inputs
+     * @param {Object} input - { collectionId: string, instructions: string, audio?: base64, image?: base64, targetLanguage: string, nativeLanguage: string }
+     * @returns {Promise<Object>} - Modified collection data with changes
+     */
+    async editCollectionWithAI(input) {
+        const { collectionId, instructions, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
+
+        // Get current collection data
+        const collection = DataStore.getCollection(collectionId);
+        const existingCards = DataStore.getCards(collectionId);
+
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
+        // Build prompt with instructions
+        let inputDescription = '';
+        if (instructions) inputDescription += `User instructions: "${instructions}"\n`;
+        if (text) inputDescription += `Additional text: "${text}"\n`;
+        if (audio) inputDescription += 'Audio instructions provided.\n';
+        if (image) inputDescription += 'Image provided for context.\n';
+
+        const prompt = `You are a language learning expert. Edit this flashcard collection based on user instructions.
+
+Current collection: "${collection.name}" (${collection.emoji})
+Current cards: ${existingCards.length} cards
+${existingCards.slice(0, 5).map(c => `- ${c.front} → ${c.back}`).join('\n')}
+${existingCards.length > 5 ? `... and ${existingCards.length - 5} more cards` : ''}
+
+${inputDescription}
+
+IMPORTANT:
+- If the user specifies how many cards to add/create in their input, use that number.
+- Otherwise, add 5 new cards by default if adding cards.
+- For modifications, update existing cards as instructed.
+- For deletions, specify which cards to remove.
+
+Provide a response with:
+1. action: "add", "modify", "remove", or "mixed"
+2. cardCount: Number of cards affected (if applicable)
+3. cards: Array of new/modified cards (only if adding or modifying), each with:
+   - front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
+   - If modifying, include: cardId (from existing cards)
+4. removeCardIds: Array of card IDs to remove (only if removing)
+5. collectionUpdates: Object with any collection-level changes (name, emoji, description)
+
+Respond ONLY with valid JSON:
+{
+  "action": "add",
+  "cardCount": 5,
+  "cards": [...],
+  "removeCardIds": [],
+  "collectionUpdates": {}
+}`;
+
+        // Build multimodal content array
+        const contents = [{ parts: [{ text: prompt }] }];
+
+        // Add audio if provided
+        if (audio) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: this.detectAudioMimeType(audio),
+                    data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        // Add image if provided
+        if (image) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        const response = await this.callAPI(this.MODELS.FLASH, contents, {
+            temperature: 0.7,
+            maxTokens: 8192,
+            thinkingLevel: this.THINKING_LEVELS.MEDIUM
+        });
+
+        const text_response = this.extractText(response);
+
+        try {
+            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('Failed to parse AI edit response:', e, text_response);
+            throw new Error('Failed to process AI editing. Please try again.');
+        }
+    },
+
+    /**
+     * Detect MIME type from base64 audio data URL
+     * @param {string} audioData - Base64 audio data URL
+     * @returns {string} - MIME type
+     */
+    detectAudioMimeType(audioData) {
+        if (audioData.startsWith('data:')) {
+            const match = audioData.match(/^data:(audio\/[^;]+);/);
+            if (match) return match[1];
+        }
+        // Default to common formats supported by Gemini
+        return 'audio/wav';
     },
 
     /**
