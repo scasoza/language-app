@@ -222,37 +222,6 @@ const GeminiService = {
         return buffer;
     },
 
-    parseDataUrl(dataUrl) {
-        if (!dataUrl) {
-            return null;
-        }
-
-        const match = dataUrl.match(/^data:(.+?);base64,(.+)$/);
-        if (!match) {
-            console.warn('Unsupported data URL format');
-            return null;
-        }
-
-        return {
-            mimeType: match[1],
-            data: match[2]
-        };
-    },
-
-    addInlinePart(parts, dataUrl, fallbackMime) {
-        const inline = this.parseDataUrl(dataUrl);
-        if (!inline) {
-            return;
-        }
-
-        parts.push({
-            inlineData: {
-                mimeType: inline.mimeType || fallbackMime,
-                data: inline.data
-            }
-        });
-    },
-
     /**
      * Generate flashcards from text/image using Gemini 3 Flash
      * @param {Object} input - { text: string, image?: base64 string, targetLanguage: string, nativeLanguage: string }
@@ -292,7 +261,12 @@ Example format:
 
         // Add image if provided
         if (image) {
-            this.addInlinePart(contents[0].parts, image, 'image/jpeg');
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
         }
 
         const response = await this.callAPI(this.MODELS.FLASH, contents, {
@@ -320,33 +294,21 @@ Example format:
      * @returns {Promise<Object>} - Collection metadata and cards
      */
     async generateCollection(input) {
-        const {
-            topic,
-            instructions,
-            image,
-            audio,
-            targetLanguage = 'Spanish',
-            nativeLanguage = 'English',
-            cardCount = 10,
-            context = 'new'
-        } = input;
+        const { topic, image, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount = 10 } = input;
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
         const readingGuide = isChinese ? 'pinyin' : 'phonetic';
 
         const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
 
-${context === 'existing' ? 'This request is for adding new cards to an existing collection. Avoid duplicates and follow any include/exclude instructions.' : ''}
-${topic ? `Topic: "${topic}"` : ''}
-${instructions ? `User instructions: "${instructions}"` : ''}
+Topic: "${topic}"
 ${image ? 'Use the provided image as context for the vocabulary.' : ''}
-${audio ? 'Use the provided audio as context for the vocabulary without transcription.' : ''}
 
 Generate a collection with:
 1. name: A catchy collection name
 2. emoji: A single relevant emoji
 3. description: A brief description (1 sentence)
-4. cards: ${cardCount} flashcards by default (unless the user explicitly requests a different number in text or audio; honor that) with front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
+4. cards: ${cardCount} flashcards with front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
 
 Respond ONLY with valid JSON. No markdown, no explanation.
 
@@ -369,11 +331,12 @@ Format:
         const contents = [{ parts: [{ text: prompt }] }];
 
         if (image) {
-            this.addInlinePart(contents[0].parts, image, 'image/jpeg');
-        }
-
-        if (audio) {
-            this.addInlinePart(contents[0].parts, audio, 'audio/wav');
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
         }
 
         const response = await this.callAPI(this.MODELS.FLASH, contents, {
