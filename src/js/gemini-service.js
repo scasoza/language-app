@@ -289,6 +289,108 @@ Example format:
     },
 
     /**
+     * Generate a collection with multimodal inputs (text, audio, images) using Gemini 3 Flash
+     * @param {Object} input - { topic?: string, audio?: base64, image?: base64, text?: string, targetLanguage: string, nativeLanguage: string, cardCount?: number }
+     * @returns {Promise<Object>} - Collection metadata and cards
+     */
+    async generateCollectionMultimodal(input) {
+        const { topic, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount } = input;
+
+        // Validate inputs - images cannot be used alone
+        if (image && !audio && !text && !topic) {
+            throw new Error('Images cannot be used alone. Please provide text or audio along with images.');
+        }
+
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
+        // Build dynamic prompt based on available inputs
+        let inputDescription = '';
+        if (topic) inputDescription += `Topic: "${topic}"\n`;
+        if (text) inputDescription += `User input: "${text}"\n`;
+        if (audio) inputDescription += 'Audio input provided.\n';
+        if (image) inputDescription += 'Image provided for context.\n';
+
+        const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
+
+${inputDescription}
+
+IMPORTANT: First, check if the user has specified how many cards they want in their input (audio or text).
+- If they specify a number (e.g., "create 15 cards", "I want 20 flashcards"), use that number.
+- If no number is specified, use the default: ${cardCount || 10} cards.
+
+Generate a collection with:
+1. name: A catchy collection name based on the content
+2. emoji: A single relevant emoji
+3. description: A brief description (1 sentence)
+4. cardCount: The number of cards to generate (extracted from user input or default)
+5. cards: Generate exactly the number of flashcards specified, each with:
+   - front: word/phrase in ${targetLanguage}
+   - back: translation in ${nativeLanguage}
+   - reading: ${readingGuide} pronunciation guide
+   - example: example sentence in ${targetLanguage}
+   - exampleTranslation: translated example in ${nativeLanguage}${isChinese ? '\n   - exampleReading: pinyin for the example sentence' : ''}
+
+Respond ONLY with valid JSON. No markdown, no explanation.
+
+Format:
+{
+  "name": "Collection Name",
+  "emoji": "🌮",
+  "description": "Learn food vocabulary",
+  "cardCount": 10,
+  "cards": [
+    {
+      "front": "word in ${targetLanguage}",
+      "back": "translation in ${nativeLanguage}",
+      "reading": "${readingGuide} for the word",
+      "example": "example sentence in ${targetLanguage}",
+      "exampleTranslation": "translated example in ${nativeLanguage}"${isChinese ? ',\n      "exampleReading": "pinyin for the example sentence"' : ''}
+    }
+  ]
+}`;
+
+        // Build multimodal content array
+        const contents = [{ parts: [{ text: prompt }] }];
+
+        // Add audio if provided (send directly without transcription)
+        if (audio) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: this.detectAudioMimeType(audio),
+                    data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        // Add image if provided
+        if (image) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        const response = await this.callAPI(this.MODELS.FLASH, contents, {
+            temperature: 0.7,
+            maxTokens: 8192,
+            thinkingLevel: this.THINKING_LEVELS.MEDIUM
+        });
+
+        const text_response = this.extractText(response);
+
+        try {
+            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('Failed to parse collection:', e, text_response);
+            throw new Error('Failed to generate collection. Please try again.');
+        }
+    },
+
+    /**
      * Generate a collection based on topic/image using Gemini 3 Flash
      * @param {Object} input - { topic: string, image?: base64, language: string }
      * @returns {Promise<Object>} - Collection metadata and cards
@@ -537,6 +639,115 @@ Text: "${text}"`;
         });
 
         return this.extractText(response).trim();
+    },
+
+    /**
+     * Edit a collection using AI with multimodal inputs
+     * @param {Object} input - { collectionId: string, instructions: string, audio?: base64, image?: base64, targetLanguage: string, nativeLanguage: string }
+     * @returns {Promise<Object>} - Modified collection data with changes
+     */
+    async editCollectionWithAI(input) {
+        const { collectionId, instructions, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
+
+        // Get current collection data
+        const collection = DataStore.getCollection(collectionId);
+        const existingCards = DataStore.getCards(collectionId);
+
+        const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
+        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+
+        // Build prompt with instructions
+        let inputDescription = '';
+        if (instructions) inputDescription += `User instructions: "${instructions}"\n`;
+        if (text) inputDescription += `Additional text: "${text}"\n`;
+        if (audio) inputDescription += 'Audio instructions provided.\n';
+        if (image) inputDescription += 'Image provided for context.\n';
+
+        const prompt = `You are a language learning expert. Edit this flashcard collection based on user instructions.
+
+Current collection: "${collection.name}" (${collection.emoji})
+Current cards: ${existingCards.length} cards
+${existingCards.slice(0, 5).map(c => `- ${c.front} → ${c.back}`).join('\n')}
+${existingCards.length > 5 ? `... and ${existingCards.length - 5} more cards` : ''}
+
+${inputDescription}
+
+IMPORTANT:
+- If the user specifies how many cards to add/create in their input, use that number.
+- Otherwise, add 5 new cards by default if adding cards.
+- For modifications, update existing cards as instructed.
+- For deletions, specify which cards to remove.
+
+Provide a response with:
+1. action: "add", "modify", "remove", or "mixed"
+2. cardCount: Number of cards affected (if applicable)
+3. cards: Array of new/modified cards (only if adding or modifying), each with:
+   - front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
+   - If modifying, include: cardId (from existing cards)
+4. removeCardIds: Array of card IDs to remove (only if removing)
+5. collectionUpdates: Object with any collection-level changes (name, emoji, description)
+
+Respond ONLY with valid JSON:
+{
+  "action": "add",
+  "cardCount": 5,
+  "cards": [...],
+  "removeCardIds": [],
+  "collectionUpdates": {}
+}`;
+
+        // Build multimodal content array
+        const contents = [{ parts: [{ text: prompt }] }];
+
+        // Add audio if provided
+        if (audio) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: this.detectAudioMimeType(audio),
+                    data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        // Add image if provided
+        if (image) {
+            contents[0].parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: image.replace(/^data:image\/\w+;base64,/, '')
+                }
+            });
+        }
+
+        const response = await this.callAPI(this.MODELS.FLASH, contents, {
+            temperature: 0.7,
+            maxTokens: 8192,
+            thinkingLevel: this.THINKING_LEVELS.MEDIUM
+        });
+
+        const text_response = this.extractText(response);
+
+        try {
+            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('Failed to parse AI edit response:', e, text_response);
+            throw new Error('Failed to process AI editing. Please try again.');
+        }
+    },
+
+    /**
+     * Detect MIME type from base64 audio data URL
+     * @param {string} audioData - Base64 audio data URL
+     * @returns {string} - MIME type
+     */
+    detectAudioMimeType(audioData) {
+        if (audioData.startsWith('data:')) {
+            const match = audioData.match(/^data:(audio\/[^;]+);/);
+            if (match) return match[1];
+        }
+        // Default to common formats supported by Gemini
+        return 'audio/wav';
     },
 
     /**
