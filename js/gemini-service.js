@@ -30,57 +30,6 @@ const GeminiService = {
         female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
     },
 
-    getCloudTtsConfig(targetLanguage) {
-        if (!targetLanguage) {
-            return { languageCode: 'en-US', ssmlGender: 'FEMALE' };
-        }
-
-        const normalized = targetLanguage.toLowerCase().trim();
-        const langCodeMatch = normalized.match(/^([a-z]{2})(?:[-_])([a-z]{2})$/);
-        if (langCodeMatch) {
-            return {
-                languageCode: `${langCodeMatch[1]}-${langCodeMatch[2].toUpperCase()}`,
-                ssmlGender: 'FEMALE'
-            };
-        }
-
-        if (normalized.includes('spanish') || normalized.includes('español')) {
-            return { languageCode: 'es-ES', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('french') || normalized.includes('français')) {
-            return { languageCode: 'fr-FR', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('german') || normalized.includes('deutsch')) {
-            return { languageCode: 'de-DE', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('italian') || normalized.includes('italiano')) {
-            return { languageCode: 'it-IT', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('portuguese') || normalized.includes('português')) {
-            return { languageCode: 'pt-BR', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('japanese') || normalized.includes('日本語')) {
-            return { languageCode: 'ja-JP', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('chinese') || normalized.includes('mandarin') || normalized.includes('中文')) {
-            return { languageCode: 'cmn-CN', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('korean') || normalized.includes('한국')) {
-            return { languageCode: 'ko-KR', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('russian') || normalized.includes('рус')) {
-            return { languageCode: 'ru-RU', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('arabic') || normalized.includes('العربية')) {
-            return { languageCode: 'ar-XA', ssmlGender: 'FEMALE' };
-        }
-        if (normalized.includes('hindi') || normalized.includes('हिंदी')) {
-            return { languageCode: 'hi-IN', ssmlGender: 'FEMALE' };
-        }
-
-        return { languageCode: 'en-US', ssmlGender: 'FEMALE' };
-    },
-
     // Set API key
     async setApiKey(key) {
         this.API_KEY = key;
@@ -556,53 +505,6 @@ Respond ONLY with valid JSON:
         });
 
         return this.extractAudio(response);
-    },
-
-    /**
-     * Generate TTS with Google Cloud Text-to-Speech for a single text
-     * @param {string} text - Text to convert to speech
-     * @param {string} targetLanguage - Target language name or locale
-     * @returns {Promise<string>} - Base64 audio data URL
-     */
-    async generateCloudTTS(text, targetLanguage = 'English') {
-        console.log('☁️ GeminiService.generateCloudTTS called');
-        console.log(`   - Text: "${text}"`);
-        console.log(`   - Target language: ${targetLanguage}`);
-
-        const apiKey = this.getApiKey();
-        if (!apiKey) {
-            throw new Error('Gemini API key not configured. Please add your API key in settings.');
-        }
-
-        const { languageCode, ssmlGender } = this.getCloudTtsConfig(targetLanguage);
-
-        const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                input: { text },
-                voice: { languageCode, ssmlGender },
-                audioConfig: { audioEncoding: 'MP3' }
-            })
-        });
-
-        if (!response.ok) {
-            let errorMessage = 'Cloud TTS request failed';
-            try {
-                const error = await response.json();
-                errorMessage = error.error?.message || errorMessage;
-            } catch (parseError) {
-                console.warn('Failed to parse Cloud TTS error response', parseError);
-            }
-            throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        if (!data.audioContent) {
-            throw new Error('Cloud TTS response missing audio content');
-        }
-
-        return `data:audio/mp3;base64,${data.audioContent}`;
     },
 
     /**
