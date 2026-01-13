@@ -228,7 +228,7 @@ const CollectionDetailScreen = {
                     <span class="material-symbols-outlined text-slate-400">edit</span>
                     <span>Edit Collection Info</span>
                 </button>
-                <button onclick="CollectionDetailScreen.showGenerateCardsModal()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
+                <button onclick="CollectionDetailScreen.generateMoreCards()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-primary">auto_awesome</span>
                     <span>Generate More Cards with AI</span>
                 </button>
@@ -283,107 +283,7 @@ const CollectionDetailScreen = {
         }
     },
 
-    showGenerateCardsModal() {
-        this.aiInput = { image: null, audio: null };
-        app.closeModal();
-
-        app.showModal(`
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">Generate More Cards</h3>
-                <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What should change?</label>
-                    <textarea id="collection-ai-instructions" rows="3" placeholder="Add travel phrases, exclude slang, create 15 cards..." class="w-full bg-[#1a2e25] border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="CollectionDetailScreen.addAiImage()" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 px-3 py-3 hover:border-primary/50 transition-colors">
-                        <span id="collection-ai-image-icon" class="material-symbols-outlined text-primary">add_a_photo</span>
-                        <span id="collection-ai-image-label" class="text-xs font-medium text-slate-500">Add Image</span>
-                    </button>
-                    <button onclick="CollectionDetailScreen.addAiAudio()" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 px-3 py-3 hover:border-primary/50 transition-colors">
-                        <span id="collection-ai-audio-icon" class="material-symbols-outlined text-primary">mic</span>
-                        <span id="collection-ai-audio-label" class="text-xs font-medium text-slate-500">Add Audio</span>
-                    </button>
-                </div>
-                <p class="text-xs text-slate-500">Add text or audio (images need text or audio). Default is 10 cards unless you specify a number.</p>
-                <button onclick="CollectionDetailScreen.generateMoreCards()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl">
-                    Generate Cards
-                </button>
-            </div>
-        `);
-    },
-
-    addAiImage() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    this.aiInput.image = event.target.result;
-                    this.updateAiInputUI();
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    },
-
-    addAiAudio() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'audio/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    this.aiInput.audio = event.target.result;
-                    this.updateAiInputUI();
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    },
-
-    updateAiInputUI() {
-        const imageLabel = document.getElementById('collection-ai-image-label');
-        const imageIcon = document.getElementById('collection-ai-image-icon');
-        const audioLabel = document.getElementById('collection-ai-audio-label');
-        const audioIcon = document.getElementById('collection-ai-audio-icon');
-
-        if (imageLabel && imageIcon) {
-            imageLabel.textContent = this.aiInput.image ? 'Image Added' : 'Add Image';
-            imageIcon.textContent = this.aiInput.image ? 'check_circle' : 'add_a_photo';
-        }
-
-        if (audioLabel && audioIcon) {
-            audioLabel.textContent = this.aiInput.audio ? 'Audio Added' : 'Add Audio';
-            audioIcon.textContent = this.aiInput.audio ? 'graphic_eq' : 'mic';
-        }
-    },
-
     async generateMoreCards() {
-        const instructions = document.getElementById('collection-ai-instructions')?.value?.trim();
-        const { image, audio } = this.aiInput || {};
-
-        if (!instructions && !audio) {
-            app.showToast('Please enter text or add audio for AI generation', 'error');
-            return;
-        }
-
-        if (image && !instructions && !audio) {
-            app.showToast('Images need text or audio context', 'error');
-            return;
-        }
-
         app.closeModal();
 
         if (!GeminiService.isConfigured()) {
@@ -398,13 +298,9 @@ const CollectionDetailScreen = {
             const user = DataStore.getUser();
             const result = await GeminiService.generateCollection({
                 topic: collection.name,
-                instructions,
-                image,
-                audio,
                 targetLanguage: user.targetLanguage,
                 nativeLanguage: user.nativeLanguage,
-                cardCount: 10,
-                context: 'existing'
+                cardCount: 5
             });
 
             if (result.cards && result.cards.length > 0) {

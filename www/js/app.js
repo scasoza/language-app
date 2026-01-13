@@ -170,7 +170,6 @@ const app = {
     },
 
     showCreateCollectionModal() {
-        this.collectionMedia = { image: null, audio: null };
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">Create Collection</h3>
@@ -191,21 +190,16 @@ const app = {
                 </div>
 
                 <div class="pt-2 border-t border-white/10">
-                    <p class="text-sm font-bold text-primary mb-3">✨ Generate with AI</p>
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-bold text-primary">✨ Generate with AI</p>
+                        <button id="voice-input-btn" onclick="app.startVoiceInput()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Speak to describe your collection">
+                            <span class="material-symbols-outlined text-primary text-xl">mic</span>
+                        </button>
+                    </div>
                     <div>
                         <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Describe what you want</label>
-                        <textarea id="collection-topic" rows="3" placeholder="Type: 'I want to learn common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
-                        <div class="grid grid-cols-2 gap-3 mt-3">
-                            <button id="collection-image-btn" onclick="app.addCollectionImage()" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 dark:border-white/10 px-3 py-3 hover:border-primary/50 transition-colors">
-                                <span id="collection-image-icon" class="material-symbols-outlined text-primary">add_a_photo</span>
-                                <span id="collection-image-label" class="text-xs font-medium text-slate-500">Add Image</span>
-                            </button>
-                            <button id="collection-audio-btn" onclick="app.addCollectionAudio()" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 dark:border-white/10 px-3 py-3 hover:border-primary/50 transition-colors">
-                                <span id="collection-audio-icon" class="material-symbols-outlined text-primary">mic</span>
-                                <span id="collection-audio-label" class="text-xs font-medium text-slate-500">Add Audio</span>
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-2">Add text or audio (images need text or audio). Default is 10 cards unless you specify a number.</p>
+                        <textarea id="collection-topic" rows="3" placeholder="Type or speak: 'I want to learn common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                        <p class="text-xs text-slate-500 mt-1">💡 Tip: Click the microphone to speak instead of typing</p>
                     </div>
                 </div>
 
@@ -230,16 +224,10 @@ const app = {
         const name = nameInput?.value?.trim();
         const emoji = emojiInput?.value?.trim() || '📚';
         const topic = topicInput?.value?.trim();
-        const { image, audio } = this.collectionMedia || {};
 
         if (withAI) {
-            if (!topic && !audio) {
-                this.showToast('Please enter text or add audio for AI generation', 'error');
-                return;
-            }
-
-            if (image && !topic && !audio) {
-                this.showToast('Images need text or audio context', 'error');
+            if (!topic) {
+                this.showToast('Please enter a topic for AI generation', 'error');
                 return;
             }
 
@@ -254,7 +242,7 @@ const app = {
 
             // Add placeholder card to collections screen
             const placeholderId = 'placeholder-' + Date.now();
-            this.showPlaceholderCollection(placeholderId, topic || name || 'AI Collection', emoji);
+            this.showPlaceholderCollection(placeholderId, topic, emoji);
 
             try {
                 const user = DataStore.getUser();
@@ -264,9 +252,7 @@ const app = {
                     topic,
                     targetLanguage: user.targetLanguage,
                     nativeLanguage: user.nativeLanguage,
-                    cardCount: 10,
-                    image,
-                    audio
+                    cardCount: 10
                 });
 
                 console.log('Generated collection:', result);
@@ -314,7 +300,6 @@ const app = {
                 } else if (this.currentScreen === 'home') {
                     HomeScreen.render();
                 }
-                this.collectionMedia = { image: null, audio: null };
             } catch (error) {
                 console.error('Error creating collection:', error);
                 this.removePlaceholderCollection(placeholderId);
@@ -341,7 +326,6 @@ const app = {
             } else if (this.currentScreen === 'home') {
                 HomeScreen.render();
             }
-            this.collectionMedia = { image: null, audio: null };
         }
     },
 
@@ -454,56 +438,87 @@ const app = {
         }
     },
 
-    addCollectionImage() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    this.collectionMedia.image = event.target.result;
-                    this.updateCollectionMediaUI();
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    },
+    // Voice input for creating collections
+    recognition: null,
+    isListening: false,
+    voiceInputBaseText: '', // Store the text that was there before voice input started
 
-    addCollectionAudio() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'audio/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    this.collectionMedia.audio = event.target.result;
-                    this.updateCollectionMediaUI();
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    },
-
-    updateCollectionMediaUI() {
-        const imageLabel = document.getElementById('collection-image-label');
-        const imageIcon = document.getElementById('collection-image-icon');
-        const audioLabel = document.getElementById('collection-audio-label');
-        const audioIcon = document.getElementById('collection-audio-icon');
-
-        if (imageLabel && imageIcon) {
-            imageLabel.textContent = this.collectionMedia.image ? 'Image Added' : 'Add Image';
-            imageIcon.textContent = this.collectionMedia.image ? 'check_circle' : 'add_a_photo';
+    startVoiceInput() {
+        // Check browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            this.showToast('Voice input not supported in this browser', 'error');
+            return;
         }
 
-        if (audioLabel && audioIcon) {
-            audioLabel.textContent = this.collectionMedia.audio ? 'Audio Added' : 'Add Audio';
-            audioIcon.textContent = this.collectionMedia.audio ? 'graphic_eq' : 'mic';
+        const topicInput = document.getElementById('collection-topic');
+        const voiceBtn = document.getElementById('voice-input-btn');
+
+        if (!this.recognition) {
+            this.recognition = new SpeechRecognition();
+            this.recognition.continuous = true;
+            this.recognition.interimResults = false; // Only final results to avoid duplication
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onstart = () => {
+                this.isListening = true;
+                // Save the current text as baseline
+                this.voiceInputBaseText = topicInput.value;
+
+                voiceBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+                this.showToast('Listening... Speak now!', 'info');
+            };
+
+            this.recognition.onresult = (event) => {
+                // Build complete transcript from ALL final results in this session
+                let completeTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        completeTranscript += event.results[i][0].transcript + ' ';
+                    }
+                }
+
+                if (completeTranscript) {
+                    // Update field: base text + space (if needed) + complete transcript
+                    const trimmedBase = this.voiceInputBaseText.trim();
+                    const separator = (trimmedBase && !trimmedBase.endsWith(' ')) ? ' ' : '';
+                    topicInput.value = trimmedBase + separator + completeTranscript.trim();
+                }
+            };
+
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.stopVoiceInput();
+                if (event.error !== 'no-speech') {
+                    this.showToast('Voice input error: ' + event.error, 'error');
+                }
+            };
+
+            this.recognition.onend = () => {
+                this.stopVoiceInput();
+            };
+        }
+
+        if (this.isListening) {
+            this.stopVoiceInput();
+        } else {
+            this.recognition.start();
+        }
+    },
+
+    stopVoiceInput() {
+        if (this.recognition && this.isListening) {
+            this.recognition.stop();
+            this.isListening = false;
+
+            const voiceBtn = document.getElementById('voice-input-btn');
+            if (voiceBtn) {
+                voiceBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
+                voiceBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+            }
         }
     },
 
@@ -552,6 +567,125 @@ const app = {
         if (this.currentScreen === 'collections') {
             CollectionsScreen.removePlaceholder(id);
         }
+    },
+
+    // Debug Console (for mobile debugging)
+    debugLogs: [],
+    maxDebugLogs: 100,
+
+    addDebugLog(message, type = 'log') {
+        const timestamp = new Date().toLocaleTimeString();
+        this.debugLogs.push({ message, type, timestamp });
+
+        // Keep only last 100 logs
+        if (this.debugLogs.length > this.maxDebugLogs) {
+            this.debugLogs.shift();
+        }
+
+        // Update UI if console is open
+        const debugOutput = document.getElementById('debug-output');
+        if (debugOutput && !document.getElementById('debug-console').classList.contains('hidden')) {
+            this.renderDebugConsole();
+        }
+    },
+
+    renderDebugConsole() {
+        const debugOutput = document.getElementById('debug-output');
+        if (!debugOutput) return;
+
+        debugOutput.innerHTML = this.debugLogs.map(log => {
+            const colors = {
+                log: 'text-slate-300',
+                warn: 'text-yellow-400',
+                error: 'text-red-400',
+                info: 'text-blue-400'
+            };
+
+            return `
+                <div class="${colors[log.type] || 'text-slate-300'}">
+                    <span class="text-slate-500">[${log.timestamp}]</span> ${log.message}
+                </div>
+            `;
+        }).join('');
+
+        // Auto-scroll to bottom
+        debugOutput.scrollTop = debugOutput.scrollHeight;
+    },
+
+    toggleDebugConsole() {
+        const console = document.getElementById('debug-console');
+        console.classList.toggle('hidden');
+
+        if (!console.classList.contains('hidden')) {
+            this.renderDebugConsole();
+        }
+    },
+
+    clearDebugConsole() {
+        this.debugLogs = [];
+        this.renderDebugConsole();
+    },
+
+    copyDebugLogs() {
+        const logsText = this.debugLogs.map(log =>
+            `[${log.timestamp}] ${log.message}`
+        ).join('\n');
+
+        // Try to copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(logsText).then(() => {
+                app.showToast('Logs copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                this.fallbackCopyDebugLogs(logsText);
+            });
+        } else {
+            this.fallbackCopyDebugLogs(logsText);
+        }
+    },
+
+    fallbackCopyDebugLogs(text) {
+        // Fallback for browsers without clipboard API
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            app.showToast('Logs copied!', 'success');
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            app.showToast('Could not copy. Please select all and copy manually.', 'error');
+        }
+        document.body.removeChild(textarea);
+    }
+};
+
+// Override console methods to capture logs
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
+    }
+};
+
+console.error = function(...args) {
+    originalConsoleError.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
+    }
+};
+
+console.warn = function(...args) {
+    originalConsoleWarn.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
     }
 };
 
