@@ -180,26 +180,33 @@ const app = {
 
             <div class="space-y-4">
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Collection Name</label>
-                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Collection Name (Optional)</label>
+                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs (or let AI decide)" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji</label>
-                    <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji (Optional)</label>
+                    <input type="text" id="collection-emoji" placeholder="🇪🇸 (or let AI decide)" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div class="pt-2 border-t border-white/10">
                     <div class="flex items-center justify-between mb-3">
                         <p class="text-sm font-bold text-primary">✨ Generate with AI</p>
-                        <button id="voice-input-btn" onclick="app.startVoiceInput()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Speak to describe your collection">
-                            <span class="material-symbols-outlined text-primary text-xl">mic</span>
-                        </button>
+                        <div class="flex gap-2">
+                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio for AI">
+                                <span class="material-symbols-outlined text-primary text-xl">mic</span>
+                            </button>
+                            <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
+                                <span class="material-symbols-outlined text-primary text-xl">image</span>
+                            </button>
+                            <input type="file" id="ai-image-input" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)" />
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Describe what you want</label>
-                        <textarea id="collection-topic" rows="3" placeholder="Type or speak: 'I want to learn common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
-                        <p class="text-xs text-slate-500 mt-1">💡 Tip: Click the microphone to speak instead of typing</p>
+                        <textarea id="collection-topic" rows="3" placeholder="Type or record audio: 'I want to learn 15 common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                        <div id="multimodal-preview" class="mt-2 flex flex-wrap gap-2"></div>
+                        <p class="text-xs text-slate-500 mt-1">💡 Tip: Use text, audio, images, or any combination. Specify card count in your description!</p>
                     </div>
                 </div>
 
@@ -226,8 +233,19 @@ const app = {
         const topic = topicInput?.value?.trim();
 
         if (withAI) {
-            if (!topic) {
-                this.showToast('Please enter a topic for AI generation', 'error');
+            // Get multimodal inputs
+            const audioData = this.recordedAudioData;
+            const imageData = this.uploadedImageData;
+
+            // Validate inputs - images cannot be used alone
+            if (imageData && !audioData && !topic) {
+                this.showToast('Images cannot be used alone. Please provide text or audio.', 'error');
+                return;
+            }
+
+            // At least one input is required
+            if (!topic && !audioData && !imageData) {
+                this.showToast('Please provide text, audio, or images to generate cards', 'error');
                 return;
             }
 
@@ -242,18 +260,26 @@ const app = {
 
             // Add placeholder card to collections screen
             const placeholderId = 'placeholder-' + Date.now();
-            this.showPlaceholderCollection(placeholderId, topic, emoji);
+            this.showPlaceholderCollection(placeholderId, topic || 'AI Collection', emoji);
 
             try {
                 const user = DataStore.getUser();
                 this.showToast('Generating with AI...', 'info');
 
-                const result = await GeminiService.generateCollection({
-                    topic,
+                // Use multimodal API if audio or image is provided
+                const result = await GeminiService.generateCollectionMultimodal({
+                    topic: name || topic,
+                    text: topic,
+                    audio: audioData,
+                    image: imageData,
                     targetLanguage: user.targetLanguage,
                     nativeLanguage: user.nativeLanguage,
-                    cardCount: 10
+                    cardCount: 10  // Default, but AI will extract from audio/text if specified
                 });
+
+                // Clear multimodal data after use
+                this.recordedAudioData = null;
+                this.uploadedImageData = null;
 
                 console.log('Generated collection:', result);
 
@@ -522,6 +548,139 @@ const app = {
         }
     },
 
+    // Audio recording for AI (captures raw audio without transcription)
+    async toggleAudioRecording() {
+        if (this.isRecording) {
+            await this.stopAudioRecording();
+        } else {
+            await this.startAudioRecording();
+        }
+    },
+
+    async startAudioRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                this.audioChunks.push(event.data);
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+                const reader = new FileReader();
+
+                reader.onloadend = () => {
+                    this.recordedAudioData = reader.result; // base64 data URL
+                    this.updateMultimodalPreview();
+                };
+
+                reader.readAsDataURL(audioBlob);
+
+                // Clean up
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            this.mediaRecorder.start();
+            this.isRecording = true;
+
+            const recordBtn = document.getElementById('audio-record-btn');
+            if (recordBtn) {
+                recordBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
+                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+            }
+
+            this.showToast('Recording audio... Click again to stop', 'info');
+        } catch (error) {
+            console.error('Audio recording error:', error);
+            this.showToast('Failed to access microphone', 'error');
+        }
+    },
+
+    async stopAudioRecording() {
+        if (this.mediaRecorder && this.isRecording) {
+            this.mediaRecorder.stop();
+            this.isRecording = false;
+
+            const recordBtn = document.getElementById('audio-record-btn');
+            if (recordBtn) {
+                recordBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
+                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+            }
+
+            this.showToast('Audio recorded!', 'success');
+        }
+    },
+
+    // Image upload handler
+    handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Please select an image file', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            this.uploadedImageData = reader.result; // base64 data URL
+            this.updateMultimodalPreview();
+            this.showToast('Image uploaded!', 'success');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    // Update multimodal preview in the modal
+    updateMultimodalPreview() {
+        const previewContainer = document.getElementById('multimodal-preview');
+        if (!previewContainer) return;
+
+        let previewHTML = '';
+
+        if (this.recordedAudioData) {
+            previewHTML += `
+                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
+                    <span class="material-symbols-outlined text-primary text-sm">mic</span>
+                    <span class="text-xs font-medium">Audio recorded</span>
+                    <button onclick="app.removeAudio()" class="ml-2 text-gray-400 hover:text-red-500">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        if (this.uploadedImageData) {
+            previewHTML += `
+                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
+                    <span class="material-symbols-outlined text-primary text-sm">image</span>
+                    <span class="text-xs font-medium">Image uploaded</span>
+                    <button onclick="app.removeImage()" class="ml-2 text-gray-400 hover:text-red-500">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        previewContainer.innerHTML = previewHTML;
+    },
+
+    removeAudio() {
+        this.recordedAudioData = null;
+        this.updateMultimodalPreview();
+        this.showToast('Audio removed', 'info');
+    },
+
+    removeImage() {
+        this.uploadedImageData = null;
+        document.getElementById('ai-image-input').value = '';
+        this.updateMultimodalPreview();
+        this.showToast('Image removed', 'info');
+    },
+
     // Toast notifications
     showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
@@ -567,125 +726,6 @@ const app = {
         if (this.currentScreen === 'collections') {
             CollectionsScreen.removePlaceholder(id);
         }
-    },
-
-    // Debug Console (for mobile debugging)
-    debugLogs: [],
-    maxDebugLogs: 100,
-
-    addDebugLog(message, type = 'log') {
-        const timestamp = new Date().toLocaleTimeString();
-        this.debugLogs.push({ message, type, timestamp });
-
-        // Keep only last 100 logs
-        if (this.debugLogs.length > this.maxDebugLogs) {
-            this.debugLogs.shift();
-        }
-
-        // Update UI if console is open
-        const debugOutput = document.getElementById('debug-output');
-        if (debugOutput && !document.getElementById('debug-console').classList.contains('hidden')) {
-            this.renderDebugConsole();
-        }
-    },
-
-    renderDebugConsole() {
-        const debugOutput = document.getElementById('debug-output');
-        if (!debugOutput) return;
-
-        debugOutput.innerHTML = this.debugLogs.map(log => {
-            const colors = {
-                log: 'text-slate-300',
-                warn: 'text-yellow-400',
-                error: 'text-red-400',
-                info: 'text-blue-400'
-            };
-
-            return `
-                <div class="${colors[log.type] || 'text-slate-300'}">
-                    <span class="text-slate-500">[${log.timestamp}]</span> ${log.message}
-                </div>
-            `;
-        }).join('');
-
-        // Auto-scroll to bottom
-        debugOutput.scrollTop = debugOutput.scrollHeight;
-    },
-
-    toggleDebugConsole() {
-        const console = document.getElementById('debug-console');
-        console.classList.toggle('hidden');
-
-        if (!console.classList.contains('hidden')) {
-            this.renderDebugConsole();
-        }
-    },
-
-    clearDebugConsole() {
-        this.debugLogs = [];
-        this.renderDebugConsole();
-    },
-
-    copyDebugLogs() {
-        const logsText = this.debugLogs.map(log =>
-            `[${log.timestamp}] ${log.message}`
-        ).join('\n');
-
-        // Try to copy to clipboard
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(logsText).then(() => {
-                app.showToast('Logs copied to clipboard!', 'success');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                this.fallbackCopyDebugLogs(logsText);
-            });
-        } else {
-            this.fallbackCopyDebugLogs(logsText);
-        }
-    },
-
-    fallbackCopyDebugLogs(text) {
-        // Fallback for browsers without clipboard API
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-            document.execCommand('copy');
-            app.showToast('Logs copied!', 'success');
-        } catch (err) {
-            console.error('Fallback copy failed:', err);
-            app.showToast('Could not copy. Please select all and copy manually.', 'error');
-        }
-        document.body.removeChild(textarea);
-    }
-};
-
-// Override console methods to capture logs
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-console.log = function(...args) {
-    originalConsoleLog.apply(console, args);
-    if (window.app) {
-        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
-    }
-};
-
-console.error = function(...args) {
-    originalConsoleError.apply(console, args);
-    if (window.app) {
-        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
-    }
-};
-
-console.warn = function(...args) {
-    originalConsoleWarn.apply(console, args);
-    if (window.app) {
-        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
     }
 };
 

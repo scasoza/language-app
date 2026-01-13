@@ -232,6 +232,10 @@ const CollectionDetailScreen = {
                     <span class="material-symbols-outlined text-primary">auto_awesome</span>
                     <span>Generate More Cards with AI</span>
                 </button>
+                <button onclick="CollectionDetailScreen.showAIEditModal()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
+                    <span class="material-symbols-outlined text-primary">magic_button</span>
+                    <span>AI Edit Collection</span>
+                </button>
                 <button onclick="CollectionDetailScreen.resetProgress()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-amber-400">restart_alt</span>
                     <span>Reset Progress</span>
@@ -350,6 +354,268 @@ const CollectionDetailScreen = {
 
             app.showToast('Collection deleted', 'success');
             app.navigate('collections');
+        }
+    },
+
+    showAIEditModal() {
+        app.closeModal();
+
+        app.showModal(`
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">AI Edit Collection</h3>
+                <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="pt-2">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-bold text-primary">✨ Multimodal AI Editing</p>
+                        <div class="flex gap-2">
+                            <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio instructions">
+                                <span class="material-symbols-outlined text-primary text-xl">mic</span>
+                            </button>
+                            <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
+                                <span class="material-symbols-outlined text-primary text-xl">image</span>
+                            </button>
+                            <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What would you like to change?</label>
+                        <textarea id="ai-edit-instructions" rows="4" placeholder="Examples:
+• Add 20 more cards about Spanish restaurant vocabulary
+• Remove all cards related to greetings
+• Add cards for the words in this image
+• Create 10 cards based on this audio" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                        <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
+                        <p class="text-xs text-slate-500 mt-1">💡 Use text, audio, images, or any combination. Specify card count if needed!</p>
+                    </div>
+                </div>
+
+                <button onclick="CollectionDetailScreen.processAIEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">auto_awesome</span>
+                    Apply AI Changes
+                </button>
+            </div>
+        `);
+
+        // Initialize temporary storage for this modal
+        this.editAudioData = null;
+        this.editImageData = null;
+    },
+
+    async toggleEditAudioRecording() {
+        if (this.isEditRecording) {
+            await this.stopEditAudioRecording();
+        } else {
+            await this.startEditAudioRecording();
+        }
+    },
+
+    async startEditAudioRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.editMediaRecorder = new MediaRecorder(stream);
+            this.editAudioChunks = [];
+
+            this.editMediaRecorder.ondataavailable = (event) => {
+                this.editAudioChunks.push(event.data);
+            };
+
+            this.editMediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.editAudioChunks, { type: 'audio/wav' });
+                const reader = new FileReader();
+
+                reader.onloadend = () => {
+                    this.editAudioData = reader.result;
+                    this.updateEditPreview();
+                };
+
+                reader.readAsDataURL(audioBlob);
+
+                // Clean up
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            this.editMediaRecorder.start();
+            this.isEditRecording = true;
+
+            const recordBtn = document.getElementById('ai-edit-audio-btn');
+            if (recordBtn) {
+                recordBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
+                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+            }
+
+            app.showToast('Recording... Click again to stop', 'info');
+        } catch (error) {
+            console.error('Audio recording error:', error);
+            app.showToast('Failed to access microphone', 'error');
+        }
+    },
+
+    async stopEditAudioRecording() {
+        if (this.editMediaRecorder && this.isEditRecording) {
+            this.editMediaRecorder.stop();
+            this.isEditRecording = false;
+
+            const recordBtn = document.getElementById('ai-edit-audio-btn');
+            if (recordBtn) {
+                recordBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
+                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+            }
+
+            app.showToast('Audio recorded!', 'success');
+        }
+    },
+
+    handleEditImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            app.showToast('Please select an image file', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            this.editImageData = reader.result;
+            this.updateEditPreview();
+            app.showToast('Image uploaded!', 'success');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    updateEditPreview() {
+        const previewContainer = document.getElementById('ai-edit-preview');
+        if (!previewContainer) return;
+
+        let previewHTML = '';
+
+        if (this.editAudioData) {
+            previewHTML += `
+                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
+                    <span class="material-symbols-outlined text-primary text-sm">mic</span>
+                    <span class="text-xs font-medium">Audio recorded</span>
+                    <button onclick="CollectionDetailScreen.removeEditAudio()" class="ml-2 text-gray-400 hover:text-red-500">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        if (this.editImageData) {
+            previewHTML += `
+                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
+                    <span class="material-symbols-outlined text-primary text-sm">image</span>
+                    <span class="text-xs font-medium">Image uploaded</span>
+                    <button onclick="CollectionDetailScreen.removeEditImage()" class="ml-2 text-gray-400 hover:text-red-500">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        previewContainer.innerHTML = previewHTML;
+    },
+
+    removeEditAudio() {
+        this.editAudioData = null;
+        this.updateEditPreview();
+        app.showToast('Audio removed', 'info');
+    },
+
+    removeEditImage() {
+        this.editImageData = null;
+        document.getElementById('ai-edit-image-input').value = '';
+        this.updateEditPreview();
+        app.showToast('Image removed', 'info');
+    },
+
+    async processAIEdit() {
+        const instructions = document.getElementById('ai-edit-instructions')?.value?.trim();
+        const audioData = this.editAudioData;
+        const imageData = this.editImageData;
+
+        // Validate inputs
+        if (imageData && !audioData && !instructions) {
+            app.showToast('Images cannot be used alone. Please provide text or audio.', 'error');
+            return;
+        }
+
+        if (!instructions && !audioData && !imageData) {
+            app.showToast('Please provide instructions, audio, or images', 'error');
+            return;
+        }
+
+        if (!GeminiService.isConfigured()) {
+            app.closeModal();
+            app.showApiKeyModal();
+            return;
+        }
+
+        app.closeModal();
+        app.showLoadingOverlay('Processing AI edits...', 'Analyzing your collection');
+
+        try {
+            const user = DataStore.getUser();
+            const result = await GeminiService.editCollectionWithAI({
+                collectionId: this.collectionId,
+                instructions,
+                audio: audioData,
+                image: imageData,
+                text: instructions,
+                targetLanguage: user.targetLanguage,
+                nativeLanguage: user.nativeLanguage
+            });
+
+            console.log('AI edit result:', result);
+
+            // Apply changes based on AI response
+            if (result.collectionUpdates && Object.keys(result.collectionUpdates).length > 0) {
+                DataStore.updateCollection(this.collectionId, result.collectionUpdates);
+            }
+
+            // Remove cards if specified
+            if (result.removeCardIds && result.removeCardIds.length > 0) {
+                result.removeCardIds.forEach(cardId => {
+                    DataStore.deleteCard(cardId);
+                });
+            }
+
+            // Add or modify cards
+            if (result.cards && result.cards.length > 0) {
+                if (result.action === 'modify') {
+                    // Update existing cards
+                    result.cards.forEach(card => {
+                        if (card.cardId) {
+                            DataStore.updateCard(card.cardId, card);
+                        }
+                    });
+                } else {
+                    // Add new cards
+                    result.cards.forEach(card => {
+                        DataStore.addCard({
+                            ...card,
+                            collectionId: this.collectionId
+                        });
+                    });
+                }
+            }
+
+            app.hideLoadingOverlay();
+
+            const changeCount = (result.cards?.length || 0) + (result.removeCardIds?.length || 0);
+            app.showToast(`AI applied ${changeCount} change${changeCount !== 1 ? 's' : ''}!`, 'success');
+
+            this.render();
+        } catch (error) {
+            app.hideLoadingOverlay();
+            app.showToast(error.message, 'error');
         }
     }
 };
