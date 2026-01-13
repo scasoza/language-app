@@ -482,10 +482,10 @@ const StudyScreen = {
                             timeoutPromise
                         ]);
                     } catch (cloudError) {
-                        // If Cloud TTS not enabled (403), fall back to Gemini TTS
-                        if (cloudError.message && cloudError.message.includes('403')) {
-                            console.warn('⚠️ Cloud TTS not enabled, falling back to Gemini TTS');
-                            app.showToast('Using Gemini TTS (Cloud TTS not enabled)', 'info');
+                        // If Cloud TTS fails (403/404) or Supabase not configured, fall back to Gemini TTS
+                        if (cloudError.message && (cloudError.message.includes('403') || cloudError.message.includes('404') || cloudError.message.includes('not configured'))) {
+                            console.warn('⚠️ Cloud TTS not available, falling back to Gemini TTS');
+                            app.showToast('Using Gemini TTS', 'info');
 
                             // Fallback to Gemini TTS with retry logic
                             const geminiTimeout = new Promise((_, reject) =>
