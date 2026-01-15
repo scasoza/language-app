@@ -48,7 +48,7 @@ const DataStore = {
             this.collections = await SupabaseService.getCollections();
 
             // Load cards
-            this.cards = await SupabaseService.getCards();
+            this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
 
             // Load dialogues
             this.dialogues = await SupabaseService.getDialogues();
@@ -62,7 +62,8 @@ const DataStore = {
         this.onboarded = localStorage.getItem('linguaflow_onboarded') === 'true';
         this.user = JSON.parse(localStorage.getItem('linguaflow_user') || 'null');
         this.collections = JSON.parse(localStorage.getItem('linguaflow_collections') || '[]');
-        this.cards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]');
+        this.cards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]')
+            .map(card => this.normalizeCard(card));
         this.dialogues = JSON.parse(localStorage.getItem('linguaflow_dialogues') || '[]');
     },
 
@@ -72,6 +73,19 @@ const DataStore = {
         localStorage.setItem('linguaflow_collections', JSON.stringify(this.collections));
         localStorage.setItem('linguaflow_cards', JSON.stringify(this.cards));
         localStorage.setItem('linguaflow_dialogues', JSON.stringify(this.dialogues));
+    },
+
+    normalizeCard(card) {
+        if (!card) return card;
+        const normalizedCard = { ...card };
+
+        if (normalizedCard.difficulty == null) normalizedCard.difficulty = 2;
+        if (normalizedCard.interval == null) normalizedCard.interval = 1;
+        if (normalizedCard.easeFactor == null) normalizedCard.easeFactor = 2.5;
+        if (normalizedCard.reviewCount == null) normalizedCard.reviewCount = 0;
+        if (!normalizedCard.nextReview) normalizedCard.nextReview = new Date().toISOString();
+
+        return normalizedCard;
     },
 
     // User methods
@@ -351,13 +365,17 @@ const DataStore = {
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + interval);
 
-        return await this.updateCard(id, {
+        const updatedCard = await this.updateCard(id, {
             interval,
             easeFactor,
             reviewCount: reviewCount + 1,
             lastReview: new Date().toISOString(),
             nextReview: nextReview.toISOString()
         });
+
+        await this.updateCollectionStats(card.collectionId);
+
+        return updatedCard;
     },
 
     async updateCollectionStats(collectionId) {
