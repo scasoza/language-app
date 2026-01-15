@@ -464,16 +464,42 @@ const StudyScreen = {
                 app.showToast('Generating pronunciation...', 'info');
                 console.log(`🎙️ Generating TTS for: "${card.front}"`);
 
+                // Get target language for proper voice selection
+                const collection = DataStore.getCollection(card.collectionId);
+                const user = DataStore.getUser();
+                const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+
                 try {
-                    // Increase timeout to 20 seconds
+                    // Try Cloud TTS first (more reliable, language-specific)
+                    // Timeout: 10 seconds (Cloud TTS is faster than Gemini)
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Timeout')), 20000)
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
                     );
 
-                    audioData = await Promise.race([
-                        GeminiService.generateTTS(card.front),
-                        timeoutPromise
-                    ]);
+                    try {
+                        audioData = await Promise.race([
+                            GeminiService.generateCloudTTS(card.front, targetLanguage),
+                            timeoutPromise
+                        ]);
+                    } catch (cloudError) {
+                        // If Cloud TTS fails (403/404) or Supabase not configured, fall back to Gemini TTS
+                        if (cloudError.message && (cloudError.message.includes('403') || cloudError.message.includes('404') || cloudError.message.includes('not configured'))) {
+                            console.warn('⚠️ Cloud TTS not available, falling back to Gemini TTS');
+                            app.showToast('Using Gemini TTS', 'info');
+
+                            // Fallback to Gemini TTS with retry logic
+                            const geminiTimeout = new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout')), 20000)
+                            );
+
+                            audioData = await Promise.race([
+                                GeminiService.generateTTS(card.front),
+                                geminiTimeout
+                            ]);
+                        } else {
+                            throw cloudError;
+                        }
+                    }
 
                     if (!audioData) {
                         throw new Error('API returned empty audio data');
@@ -489,8 +515,8 @@ const StudyScreen = {
 
                 } catch (genError) {
                     if (genError.message === 'Timeout') {
-                        console.error('❌ TTS generation timed out after 20s');
-                        app.showToast('Audio generation taking too long. Please try again.', 'error');
+                        console.error('❌ TTS generation timed out');
+                        app.showToast('Audio generation timed out. Please try again.', 'error');
                     } else if (genError.message.includes('API key')) {
                         console.error('❌ API key error:', genError);
                         app.showToast('Invalid API key. Please check Settings.', 'error');

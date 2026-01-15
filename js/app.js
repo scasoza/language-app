@@ -726,6 +726,125 @@ const app = {
         if (this.currentScreen === 'collections') {
             CollectionsScreen.removePlaceholder(id);
         }
+    },
+
+    // Debug Console (for mobile debugging)
+    debugLogs: [],
+    maxDebugLogs: 100,
+
+    addDebugLog(message, type = 'log') {
+        const timestamp = new Date().toLocaleTimeString();
+        this.debugLogs.push({ message, type, timestamp });
+
+        // Keep only last 100 logs
+        if (this.debugLogs.length > this.maxDebugLogs) {
+            this.debugLogs.shift();
+        }
+
+        // Update UI if console is open
+        const debugOutput = document.getElementById('debug-output');
+        if (debugOutput && !document.getElementById('debug-console').classList.contains('hidden')) {
+            this.renderDebugConsole();
+        }
+    },
+
+    renderDebugConsole() {
+        const debugOutput = document.getElementById('debug-output');
+        if (!debugOutput) return;
+
+        debugOutput.innerHTML = this.debugLogs.map(log => {
+            const colors = {
+                log: 'text-slate-300',
+                warn: 'text-yellow-400',
+                error: 'text-red-400',
+                info: 'text-blue-400'
+            };
+
+            return `
+                <div class="${colors[log.type] || 'text-slate-300'}">
+                    <span class="text-slate-500">[${log.timestamp}]</span> ${log.message}
+                </div>
+            `;
+        }).join('');
+
+        // Auto-scroll to bottom
+        debugOutput.scrollTop = debugOutput.scrollHeight;
+    },
+
+    toggleDebugConsole() {
+        const console = document.getElementById('debug-console');
+        console.classList.toggle('hidden');
+
+        if (!console.classList.contains('hidden')) {
+            this.renderDebugConsole();
+        }
+    },
+
+    clearDebugConsole() {
+        this.debugLogs = [];
+        this.renderDebugConsole();
+    },
+
+    copyDebugLogs() {
+        const logsText = this.debugLogs.map(log =>
+            `[${log.timestamp}] ${log.message}`
+        ).join('\n');
+
+        // Try to copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(logsText).then(() => {
+                app.showToast('Logs copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                this.fallbackCopyDebugLogs(logsText);
+            });
+        } else {
+            this.fallbackCopyDebugLogs(logsText);
+        }
+    },
+
+    fallbackCopyDebugLogs(text) {
+        // Fallback for browsers without clipboard API
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            app.showToast('Logs copied!', 'success');
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            app.showToast('Could not copy. Please select all and copy manually.', 'error');
+        }
+        document.body.removeChild(textarea);
+    }
+};
+
+// Override console methods to capture logs
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
+    }
+};
+
+console.error = function(...args) {
+    originalConsoleError.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
+    }
+};
+
+console.warn = function(...args) {
+    originalConsoleWarn.apply(console, args);
+    if (window.app) {
+        app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
     }
 };
 

@@ -26,8 +26,22 @@ const GeminiService = {
 
     // Available TTS voices
     VOICES: {
-        male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
-        female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
+        // Gemini TTS voices (for dialogues)
+        gemini: {
+            male: ['Kore', 'Charon', 'Fenrir', 'Orus', 'Puck'],
+            female: ['Aoede', 'Kari', 'Zephyr', 'Nova', 'Stella']
+        },
+        // Cloud TTS voices (for flashcards - reliable, language-specific)
+        cloudTTS: {
+            'Chinese': 'cmn-CN-Wavenet-A',
+            'Spanish': 'es-ES-Wavenet-B',
+            'French': 'fr-FR-Wavenet-A',
+            'German': 'de-DE-Wavenet-A',
+            'Japanese': 'ja-JP-Wavenet-A',
+            'Korean': 'ko-KR-Wavenet-A',
+            'Italian': 'it-IT-Wavenet-A',
+            'Portuguese': 'pt-BR-Wavenet-A'
+        }
     },
 
     // Set API key
@@ -616,6 +630,83 @@ Respond ONLY with valid JSON:
 
         } catch (error) {
             console.error(`❌ TTS generation failed:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Generate TTS using Google Cloud TTS via Supabase Edge Function
+     * This is more reliable and language-specific for flashcard audio
+     * @param {string} text - Text to convert to speech
+     * @param {string} language - Target language (e.g., 'Chinese', 'Spanish')
+     * @returns {Promise<string>} - Base64 audio data URL
+     */
+    async generateCloudTTS(text, language = 'Chinese') {
+        console.log(`🔊 GeminiService.generateCloudTTS called`);
+        console.log(`   - Text: "${text}"`);
+        console.log(`   - Language: ${language}`);
+
+        // Get Supabase URL
+        const supabaseUrl = window.SUPABASE_URL || localStorage.getItem('supabase_url');
+        console.log(`🔍 Supabase URL check:`);
+        console.log(`   - window.SUPABASE_URL: ${window.SUPABASE_URL || '(not set)'}`);
+        console.log(`   - localStorage.supabase_url: ${localStorage.getItem('supabase_url') || '(not set)'}`);
+        console.log(`   - Using: ${supabaseUrl || '(NONE - will error)'}`);
+
+        if (!supabaseUrl) {
+            throw new Error('Supabase not configured');
+        }
+
+        // Get voice for target language
+        const voiceName = this.VOICES.cloudTTS[language] || 'cmn-CN-Wavenet-A';
+        const languageCode = voiceName.split('-').slice(0, 2).join('-'); // e.g., 'cmn-CN'
+
+        // Call Supabase Edge Function
+        const functionUrl = `${supabaseUrl}/functions/v1/cloud-tts`;
+        console.log(`🎯 Final function URL: ${functionUrl}`);
+
+        const requestBody = {
+            text,
+            languageCode,
+            voiceName
+        };
+
+        try {
+            console.log(`🌐 Calling Supabase Edge Function...`);
+            console.log(`   Request body:`, requestBody);
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ Edge Function error:`, errorText);
+                throw new Error(`Cloud TTS failed: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log(`✅ Cloud TTS response received`);
+
+            if (!data.audioContent) {
+                console.error('❌ No audioContent in response:', data);
+                throw new Error('No audio data returned from Cloud TTS');
+            }
+
+            // Convert to data URL for playback
+            const audioDataUrl = `data:audio/mp3;base64,${data.audioContent}`;
+            console.log(`✅ Audio data URL created, length: ${audioDataUrl.length}`);
+
+            return audioDataUrl;
+
+        } catch (error) {
+            console.error(`❌ Cloud TTS generation failed:`, error);
             throw error;
         }
     },
