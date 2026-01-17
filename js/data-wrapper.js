@@ -48,7 +48,7 @@ const DataStore = {
             this.collections = await SupabaseService.getCollections();
 
             // Load cards
-            this.cards = await SupabaseService.getCards();
+            this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
 
             // Load dialogues
             this.dialogues = await SupabaseService.getDialogues();
@@ -62,7 +62,8 @@ const DataStore = {
         this.onboarded = localStorage.getItem('linguaflow_onboarded') === 'true';
         this.user = JSON.parse(localStorage.getItem('linguaflow_user') || 'null');
         this.collections = JSON.parse(localStorage.getItem('linguaflow_collections') || '[]');
-        this.cards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]');
+        this.cards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]')
+            .map(card => this.normalizeCard(card));
         this.dialogues = JSON.parse(localStorage.getItem('linguaflow_dialogues') || '[]');
     },
 
@@ -72,6 +73,19 @@ const DataStore = {
         localStorage.setItem('linguaflow_collections', JSON.stringify(this.collections));
         localStorage.setItem('linguaflow_cards', JSON.stringify(this.cards));
         localStorage.setItem('linguaflow_dialogues', JSON.stringify(this.dialogues));
+    },
+
+    normalizeCard(card) {
+        if (!card) return card;
+        const normalizedCard = { ...card };
+
+        if (normalizedCard.difficulty == null) normalizedCard.difficulty = 2;
+        if (normalizedCard.interval == null) normalizedCard.interval = 1;
+        if (normalizedCard.easeFactor == null) normalizedCard.easeFactor = 2.5;
+        if (normalizedCard.reviewCount == null) normalizedCard.reviewCount = 0;
+        if (!normalizedCard.nextReview) normalizedCard.nextReview = new Date().toISOString();
+
+        return normalizedCard;
     },
 
     // User methods
@@ -85,7 +99,8 @@ const DataStore = {
                 settings: {
                     darkMode: true,
                     audioAutoplay: true,
-                    notifications: true
+                    notifications: true,
+                    excludedCollectionIds: []
                 }
             };
         }
@@ -97,6 +112,7 @@ const DataStore = {
                 darkMode: true,
                 audioAutoplay: true,
                 notifications: true,
+                excludedCollectionIds: [],
                 ...this.user.settings
             }
         };
@@ -208,18 +224,23 @@ const DataStore = {
     },
 
     // Cards methods
-    getCards(collectionId = null) {
+    getCards(collectionId = null, excludedCollectionIds = []) {
         if (collectionId) {
             return this.cards.filter(c => c.collectionId === collectionId);
         }
-        return this.cards;
+
+        if (excludedCollectionIds.length === 0) {
+            return this.cards;
+        }
+
+        return this.cards.filter(c => !excludedCollectionIds.includes(c.collectionId));
     },
 
     getCard(id) {
         return this.cards.find(c => c.id === id);
     },
 
-    getDueCards(collectionId = null) {
+    getDueCards(collectionId = null, excludedCollectionIds = []) {
         const now = new Date();
         let cards = this.cards.filter(c =>
             !c.nextReview || new Date(c.nextReview) <= now
@@ -227,6 +248,8 @@ const DataStore = {
 
         if (collectionId) {
             cards = cards.filter(c => c.collectionId === collectionId);
+        } else if (excludedCollectionIds.length > 0) {
+            cards = cards.filter(c => !excludedCollectionIds.includes(c.collectionId));
         }
 
         return cards;
@@ -351,13 +374,17 @@ const DataStore = {
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + interval);
 
-        return await this.updateCard(id, {
+        const updatedCard = await this.updateCard(id, {
             interval,
             easeFactor,
             reviewCount: reviewCount + 1,
             lastReview: new Date().toISOString(),
             nextReview: nextReview.toISOString()
         });
+
+        await this.updateCollectionStats(card.collectionId);
+
+        return updatedCard;
     },
 
     async updateCollectionStats(collectionId) {
@@ -400,7 +427,8 @@ const DataStore = {
 
     // Statistics methods
     getTotalDueCards() {
-        return this.getDueCards().length;
+        const excludedCollectionIds = this.getUser().settings?.excludedCollectionIds || [];
+        return this.getDueCards(null, excludedCollectionIds).length;
     },
 
     getStats() {

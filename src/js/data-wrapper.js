@@ -99,7 +99,8 @@ const DataStore = {
                 settings: {
                     darkMode: true,
                     audioAutoplay: true,
-                    notifications: true
+                    notifications: true,
+                    excludedCollectionIds: []
                 }
             };
         }
@@ -111,6 +112,7 @@ const DataStore = {
                 darkMode: true,
                 audioAutoplay: true,
                 notifications: true,
+                excludedCollectionIds: [],
                 ...this.user.settings
             }
         };
@@ -222,18 +224,23 @@ const DataStore = {
     },
 
     // Cards methods
-    getCards(collectionId = null) {
+    getCards(collectionId = null, excludedCollectionIds = []) {
         if (collectionId) {
             return this.cards.filter(c => c.collectionId === collectionId);
         }
-        return this.cards;
+
+        if (excludedCollectionIds.length === 0) {
+            return this.cards;
+        }
+
+        return this.cards.filter(c => !excludedCollectionIds.includes(c.collectionId));
     },
 
     getCard(id) {
         return this.cards.find(c => c.id === id);
     },
 
-    getDueCards(collectionId = null) {
+    getDueCards(collectionId = null, excludedCollectionIds = []) {
         const now = new Date();
         let cards = this.cards.filter(c =>
             !c.nextReview || new Date(c.nextReview) <= now
@@ -241,6 +248,8 @@ const DataStore = {
 
         if (collectionId) {
             cards = cards.filter(c => c.collectionId === collectionId);
+        } else if (excludedCollectionIds.length > 0) {
+            cards = cards.filter(c => !excludedCollectionIds.includes(c.collectionId));
         }
 
         return cards;
@@ -418,7 +427,8 @@ const DataStore = {
 
     // Statistics methods
     getTotalDueCards() {
-        return this.getDueCards().length;
+        const excludedCollectionIds = this.getUser().settings?.excludedCollectionIds || [];
+        return this.getDueCards(null, excludedCollectionIds).length;
     },
 
     getStats() {

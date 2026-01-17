@@ -21,8 +21,10 @@ const StudyScreen = {
         console.log('StudyScreen.init() called with collectionId:', collectionId);
         try {
             this.collectionId = collectionId;
+            const user = DataStore.getUser();
+            const excludedCollectionIds = user.settings?.excludedCollectionIds || [];
             // Get due cards first, but if none due and studyAll, get all cards
-            this.cards = DataStore.getDueCards(collectionId);
+            this.cards = DataStore.getDueCards(collectionId, excludedCollectionIds);
 
             // Defensive check: ensure cards is an array
             if (!Array.isArray(this.cards)) {
@@ -32,7 +34,7 @@ const StudyScreen = {
 
             if (this.cards.length === 0 && (studyAll || collectionId)) {
                 // No due cards - get all cards for this collection to allow practice
-                this.cards = DataStore.getCards(collectionId);
+                this.cards = DataStore.getCards(collectionId, excludedCollectionIds);
 
                 // Defensive check: ensure cards is an array
                 if (!Array.isArray(this.cards)) {
