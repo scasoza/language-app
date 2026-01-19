@@ -16,6 +16,10 @@ const StudyScreen = {
         easy: 0
     },
     collectionId: null,
+    isPlayingAudio: false,
+    isPlayingExampleAudio: false,
+    playbackSpeed: 1.0, // 1.0 = normal, 0.75 = slower, 0.5 = very slow
+    isPlayingWordAudio: false,
 
     init(collectionId = null, studyAll = false) {
         console.log('StudyScreen.init() called with collectionId:', collectionId);
@@ -146,8 +150,13 @@ const StudyScreen = {
                             <h2 class="text-sm font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase text-[10px] leading-tight">Reviewing</h2>
                             <span class="text-base font-bold">${collection?.name || 'Mixed Review'}</span>
                         </div>
-                        <div class="flex items-center justify-center size-10">
-                            <span class="text-sm font-bold text-primary tabular-nums tracking-wide">${this.currentIndex + 1}<span class="text-slate-500 font-normal">/${this.cards.length}</span></span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="event.stopPropagation(); StudyScreen.togglePlaybackSpeed()" class="flex items-center justify-center px-2 h-8 rounded-lg bg-primary/10 border border-primary/30 hover:bg-primary/20 transition-colors">
+                                <span class="text-xs font-bold text-primary">${this.playbackSpeed}x</span>
+                            </button>
+                            <div class="flex items-center justify-center">
+                                <span class="text-sm font-bold text-primary tabular-nums tracking-wide">${this.currentIndex + 1}<span class="text-slate-500 font-normal">/${this.cards.length}</span></span>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -155,7 +164,7 @@ const StudyScreen = {
                 <!-- Main Content Area: Flashcard -->
                 <main class="flex-1 flex flex-col items-center justify-center px-4 py-2 w-full" onclick="StudyScreen.flip()">
                     <!-- Card Container -->
-                    <div class="relative w-full h-full max-h-[600px] flex flex-col bg-white dark:bg-card-dark rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(13,242,128,0.05)] border border-slate-200 dark:border-white/5 transition-all duration-300">
+                    <div class="relative w-full h-full max-h-[600px] flex flex-col bg-white dark:bg-card-dark rounded-3xl overflow-y-auto shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(13,242,128,0.05)] border border-slate-200 dark:border-white/5 transition-all duration-300">
                         <!-- Visual Anchor / Context Image -->
                         ${card.image ? `
                             <div class="relative w-full h-[35%] bg-slate-100 dark:bg-surface-dark overflow-hidden group">
@@ -172,11 +181,19 @@ const StudyScreen = {
                         `}
 
                         <!-- Card Content -->
-                        <div class="flex-1 flex flex-col items-center p-6 text-center relative z-10 ${card.image ? '-mt-6' : ''}">
+                        <div class="flex-1 flex flex-col items-center p-6 text-center relative z-10 ${card.image ? '-mt-6' : ''} overflow-y-auto">
                             <!-- Question (Front) -->
                             <div class="flex flex-col items-center gap-1 mb-8">
-                                <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${card.front}</h1>
-                                ${card.reading ? `<p class="text-xl text-slate-400 dark:text-primary/80 font-medium">(${card.reading})</p>` : ''}
+                                ${this.isChinese(card.front) && card.reading ? `
+                                    <!-- Chinese with ruby annotations -->
+                                    <h1 class="${this.getResponsiveFontClass(card.front)} font-bold mb-2 tracking-wide drop-shadow-lg break-words max-w-full leading-loose">
+                                        ${this.generatePinyinRuby(card.front, card.reading)}
+                                    </h1>
+                                ` : `
+                                    <!-- Non-Chinese or no reading -->
+                                    <h1 class="${this.getResponsiveFontClass(card.front)} font-bold mb-2 tracking-tighter drop-shadow-lg break-words max-w-full">${card.front}</h1>
+                                    ${card.reading ? `<p class="text-base md:text-xl text-slate-400 dark:text-primary/80 font-medium break-words max-w-full px-2">(${card.reading})</p>` : ''}
+                                `}
 
                                 <!-- Pronunciation button on front (only when not flipped) -->
                                 ${!this.isFlipped ? `
@@ -193,25 +210,40 @@ const StudyScreen = {
                                     <div class="w-12 h-1 rounded-full bg-slate-200 dark:bg-white/10 mb-2"></div>
 
                                     <!-- Translation -->
-                                    <h3 class="text-3xl font-bold text-primary tracking-tight">${card.back}</h3>
+                                    <h3 class="text-2xl md:text-3xl font-bold text-primary tracking-tight break-words max-w-full px-2">${card.back}</h3>
 
-                                    <!-- Replay pronunciation button on back -->
-                                    <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
-                                        <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
-                                    </button>
+                                    <!-- Action buttons -->
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group" title="Replay audio">
+                                            <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
+                                        </button>
+                                        <button onclick="event.stopPropagation(); StudyScreen.showGrammarBreakdown()" class="size-10 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Grammar breakdown">
+                                            <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark">school</span>
+                                        </button>
+                                    </div>
 
                                     <!-- Context Sentence -->
                                     ${card.example ? `
-                                        <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5">
-                                            <div class="flex items-center justify-between mb-2">
-                                                <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold text-left">Example</p>
-                                                <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                        <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5 max-w-full">
+                                            <div class="flex items-center justify-between mb-2 gap-2">
+                                                <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold text-left">Example <span class="text-[10px] font-normal normal-case">(tap words to hear)</span></p>
+                                                <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group flex-shrink-0">
                                                     <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
                                                 </button>
                                             </div>
-                                            <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${card.example}</p>
-                                            ${card.exampleReading ? `<p class="text-sm text-primary/70 mt-1">${card.exampleReading}</p>` : ''}
-                                            ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
+                                            ${this.isChinese(card.example) && card.exampleReading ? `
+                                                <!-- Chinese example with clickable ruby annotations -->
+                                                <p class="text-base md:text-lg text-slate-700 dark:text-slate-200 leading-loose font-medium break-words">
+                                                    ${this.generatePinyinRuby(card.example, card.exampleReading, true)}
+                                                </p>
+                                            ` : `
+                                                <!-- Non-Chinese example with clickable words -->
+                                                <p class="text-base md:text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium break-words">
+                                                    ${this.makeTextClickable(card.example)}
+                                                </p>
+                                                ${card.exampleReading ? `<p class="text-sm text-primary/70 mt-1 break-words">${card.exampleReading}</p>` : ''}
+                                            `}
+                                            ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic break-words">(${card.exampleTranslation})</p>` : ''}
                                         </div>
                                     ` : ''}
                                 </div>
@@ -447,6 +479,12 @@ const StudyScreen = {
     },
 
     async playAudio() {
+        // Prevent overlapping audio playback
+        if (this.isPlayingAudio) {
+            console.log('⏸️ Audio already playing, ignoring request');
+            return;
+        }
+
         const card = this.cards[this.currentIndex];
         if (!card) {
             console.error('No card available for audio playback');
@@ -457,6 +495,8 @@ const StudyScreen = {
         console.log(`   - Has cached audio: ${!!card.audio}`);
         console.log(`   - API configured: ${GeminiService.isConfigured()}`);
         console.log(`   - API key: ${GeminiService.getApiKey() ? GeminiService.getApiKey().substring(0, 10) + '...' : 'NOT SET'}`);
+
+        this.isPlayingAudio = true;
 
         try {
             let audioData = card.audio;
@@ -540,26 +580,47 @@ const StudyScreen = {
 
             // Play audio
             if (audioData) {
-                console.log('▶️ Playing audio...');
+                console.log(`▶️ Playing audio at ${this.playbackSpeed}x speed...`);
                 const audio = new Audio(audioData);
                 audio.volume = 1.0;
+                audio.playbackRate = this.playbackSpeed; // Apply playback speed
+
+                // Reset flag when audio ends or on error
+                audio.addEventListener('ended', () => {
+                    this.isPlayingAudio = false;
+                    console.log('✅ Audio playback completed');
+                });
+
+                audio.addEventListener('error', () => {
+                    this.isPlayingAudio = false;
+                    console.error('❌ Audio playback error');
+                });
 
                 await audio.play().catch(e => {
                     console.error('❌ Audio playback failed:', e);
                     app.showToast('Could not play audio', 'error');
+                    this.isPlayingAudio = false;
                 });
 
-                console.log('✅ Audio played successfully');
+                console.log('✅ Audio playing');
             } else {
                 console.warn('⚠️ No audio data available after generation attempt');
+                this.isPlayingAudio = false;
             }
         } catch (error) {
             console.error('❌ Unexpected error in playAudio():', error);
             app.showToast(`Audio error: ${error.message}`, 'error');
+            this.isPlayingAudio = false;
         }
     },
 
     async playExampleAudio() {
+        // Prevent overlapping audio playback
+        if (this.isPlayingExampleAudio) {
+            console.log('⏸️ Example audio already playing, ignoring request');
+            return;
+        }
+
         const card = this.cards[this.currentIndex];
         if (!card || !card.example) {
             console.error('No example available for audio playback');
@@ -570,6 +631,8 @@ const StudyScreen = {
         console.log(`   - Has cached example audio: ${!!card.exampleAudio}`);
         console.log(`   - API configured: ${GeminiService.isConfigured()}`);
         console.log(`   - API key: ${GeminiService.getApiKey() ? GeminiService.getApiKey().substring(0, 10) + '...' : 'NOT SET'}`);
+
+        this.isPlayingExampleAudio = true;
 
         try {
             let audioData = card.exampleAudio;
@@ -652,21 +715,305 @@ const StudyScreen = {
             if (audioData) {
                 try {
                     const audio = new Audio(audioData);
-                    audio.play();
+                    audio.playbackRate = this.playbackSpeed; // Apply playback speed
+
+                    // Reset flag when audio ends or on error
+                    audio.addEventListener('ended', () => {
+                        this.isPlayingExampleAudio = false;
+                        console.log('✅ Example audio playback completed');
+                    });
+
+                    audio.addEventListener('error', () => {
+                        this.isPlayingExampleAudio = false;
+                        console.error('❌ Example audio playback error');
+                    });
+
+                    await audio.play().catch(e => {
+                        console.error('Failed to play example audio:', e);
+                        app.showToast('Failed to play audio', 'error');
+                        this.isPlayingExampleAudio = false;
+                    });
                 } catch (playError) {
                     console.error('Failed to play example audio:', playError);
                     app.showToast('Failed to play audio', 'error');
+                    this.isPlayingExampleAudio = false;
                 }
+            } else {
+                this.isPlayingExampleAudio = false;
             }
         } catch (error) {
             console.error('Error playing example audio:', error);
             app.showToast('Audio playback error', 'error');
+            this.isPlayingExampleAudio = false;
         }
     },
 
     restart() {
         this.init(this.collectionId);
         this.render();
+    },
+
+    // Toggle playback speed between 1.0x, 0.75x, and 0.5x
+    togglePlaybackSpeed() {
+        if (this.playbackSpeed === 1.0) {
+            this.playbackSpeed = 0.75;
+        } else if (this.playbackSpeed === 0.75) {
+            this.playbackSpeed = 0.5;
+        } else {
+            this.playbackSpeed = 1.0;
+        }
+        this.render();
+        app.showToast(`Playback speed: ${this.playbackSpeed}x`, 'success');
+    },
+
+    // Play pronunciation for an individual word/character
+    async playWordAudio(word) {
+        if (!word || this.isPlayingWordAudio) {
+            console.log('⏸️ Word audio already playing or no word provided');
+            return;
+        }
+
+        this.isPlayingWordAudio = true;
+
+        try {
+            const card = this.cards[this.currentIndex];
+            const collection = DataStore.getCollection(card?.collectionId);
+            const user = DataStore.getUser();
+            const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+
+            console.log(`🔊 Generating TTS for word: "${word}"`);
+
+            // Generate TTS for the word
+            let audioData;
+            try {
+                audioData = await GeminiService.generateCloudTTS(word.trim(), targetLanguage);
+            } catch (cloudError) {
+                console.warn('⚠️ Cloud TTS failed, falling back to Gemini TTS');
+                audioData = await GeminiService.generateTTS(word.trim());
+            }
+
+            if (audioData) {
+                const audio = new Audio(audioData);
+                audio.volume = 1.0;
+                audio.playbackRate = this.playbackSpeed;
+
+                audio.addEventListener('ended', () => {
+                    this.isPlayingWordAudio = false;
+                });
+
+                audio.addEventListener('error', () => {
+                    this.isPlayingWordAudio = false;
+                });
+
+                await audio.play().catch(e => {
+                    console.error('❌ Word audio playback failed:', e);
+                    this.isPlayingWordAudio = false;
+                });
+            } else {
+                this.isPlayingWordAudio = false;
+            }
+        } catch (error) {
+            console.error('Error playing word audio:', error);
+            this.isPlayingWordAudio = false;
+        }
+    },
+
+    // Show grammar breakdown for the current card
+    async showGrammarBreakdown() {
+        const card = this.cards[this.currentIndex];
+        if (!card) return;
+
+        const collection = DataStore.getCollection(card.collectionId);
+        const user = DataStore.getUser();
+        const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+
+        try {
+            app.showToast('Analyzing grammar...', 'info');
+
+            const explanation = await GeminiService.explainWord(card.front, targetLanguage);
+
+            app.showModal(`
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-white">Grammar Breakdown</h2>
+                        <button onclick="app.closeModal()" class="size-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-slate-400">close</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-surface-dark/50 rounded-xl p-4 border border-white/5">
+                        <p class="text-3xl font-bold text-primary mb-2">${card.front}</p>
+                        ${card.reading ? `<p class="text-slate-400">${card.reading}</p>` : ''}
+                    </div>
+
+                    ${explanation.meaning ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Meaning</p>
+                            <p class="text-white">${explanation.meaning}</p>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.partOfSpeech ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Part of Speech</p>
+                            <p class="text-white capitalize">${explanation.partOfSpeech}</p>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.pronunciation ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Pronunciation</p>
+                            <p class="text-white">${explanation.pronunciation}</p>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.usage ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Usage</p>
+                            <p class="text-white">${explanation.usage}</p>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.examples && Array.isArray(explanation.examples) && explanation.examples.length > 0 ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-2 font-bold">Examples</p>
+                            <div class="space-y-2">
+                                ${explanation.examples.map(ex => `
+                                    <div class="bg-surface-dark/30 rounded-lg p-3 border border-white/5">
+                                        <p class="text-white mb-1">${ex.sentence || ex}</p>
+                                        ${ex.translation ? `<p class="text-sm text-slate-400 italic">${ex.translation}</p>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.relatedWords && Array.isArray(explanation.relatedWords) && explanation.relatedWords.length > 0 ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-2 font-bold">Related Words</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${explanation.relatedWords.map(word => `
+                                    <span class="px-3 py-1 bg-primary/10 border border-primary/30 rounded-lg text-primary text-sm">
+                                        ${typeof word === 'string' ? word : word.word || ''}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${explanation.tips ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Tips</p>
+                            <p class="text-white">${explanation.tips}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `, 'Grammar Breakdown');
+
+        } catch (error) {
+            console.error('Error showing grammar breakdown:', error);
+            app.showToast('Failed to load grammar breakdown', 'error');
+        }
+    },
+
+    // Helper function to determine responsive font size based on text length
+    getResponsiveFontClass(text) {
+        if (!text) return 'text-6xl md:text-7xl';
+        const length = text.length;
+
+        if (length <= 5) return 'text-6xl md:text-7xl';  // Very short
+        if (length <= 15) return 'text-5xl md:text-6xl'; // Short
+        if (length <= 30) return 'text-4xl md:text-5xl'; // Medium
+        if (length <= 50) return 'text-3xl md:text-4xl'; // Long
+        return 'text-2xl md:text-3xl';                    // Very long
+    },
+
+    // Helper function to check if text is Chinese
+    isChinese(text) {
+        if (!text) return false;
+        // Check if text contains Chinese characters (CJK Unified Ideographs)
+        return /[\u4e00-\u9fa5]/.test(text);
+    },
+
+    // Generate ruby-annotated HTML for Chinese text with pinyin (clickable for individual word pronunciation)
+    generatePinyinRuby(chineseText, pinyinText, makeClickable = false) {
+        if (!chineseText || !pinyinText) return chineseText;
+
+        // Remove parentheses from pinyin if present
+        const cleanPinyin = pinyinText.replace(/[()（）]/g, '').trim();
+
+        // Split pinyin by spaces
+        const pinyinSyllables = cleanPinyin.split(/\s+/);
+
+        // Split Chinese text into characters, grouping common multi-character words
+        const chineseChars = this.segmentChinese(chineseText);
+
+        // If counts don't match, try simple character-by-character
+        if (pinyinSyllables.length !== chineseChars.length) {
+            // Fall back to character-by-character if mismatch
+            const chars = chineseText.split('');
+            // If still mismatch, just return plain text with pinyin below
+            if (pinyinSyllables.length < chars.length) {
+                return chineseText;
+            }
+        }
+
+        // Build ruby HTML with optional click handlers
+        let html = '';
+        for (let i = 0; i < chineseChars.length && i < pinyinSyllables.length; i++) {
+            const char = chineseChars[i];
+            const escapedChar = char.replace(/'/g, "\\'");
+
+            if (makeClickable) {
+                html += `<ruby class="cursor-pointer hover:text-primary transition-colors" onclick="event.stopPropagation(); StudyScreen.playWordAudio('${escapedChar}')">${char}<rt class="text-sm font-normal pointer-events-none">${pinyinSyllables[i]}</rt></ruby>`;
+            } else {
+                html += `<ruby>${char}<rt class="text-sm font-normal">${pinyinSyllables[i]}</rt></ruby>`;
+            }
+        }
+
+        return html;
+    },
+
+    // Segment Chinese text into words/characters for pinyin matching
+    segmentChinese(text) {
+        if (!text) return [];
+
+        // For now, use a simple character-by-character split
+        // In a production app, you might use a proper Chinese word segmentation library
+        const chars = [];
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            // Skip non-Chinese characters (punctuation, etc.)
+            if (/[\u4e00-\u9fa5]/.test(char)) {
+                chars.push(char);
+            } else {
+                // Include punctuation as-is
+                if (chars.length > 0 && !(/[\u4e00-\u9fa5]/.test(chars[chars.length - 1]))) {
+                    chars[chars.length - 1] += char;
+                } else {
+                    chars.push(char);
+                }
+            }
+        }
+        return chars;
+    },
+
+    // Make text clickable for word-by-word pronunciation
+    makeTextClickable(text) {
+        if (!text) return text;
+
+        // Split by spaces and punctuation
+        const words = text.match(/[\w'-]+|[^\w\s]/g) || [];
+
+        return words.map(word => {
+            // Don't make punctuation clickable
+            if (/^[^\w\s]$/.test(word)) {
+                return word;
+            }
+
+            const escapedWord = word.replace(/'/g, "\\'");
+            return `<span class="cursor-pointer hover:text-primary transition-colors inline-block" onclick="event.stopPropagation(); StudyScreen.playWordAudio('${escapedWord}')">${word}</span>`;
+        }).join(' ');
     }
 };
 
