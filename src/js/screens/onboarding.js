@@ -25,19 +25,10 @@ const OnboardingScreen = {
     ],
 
     languages: [
-        { code: 'Spanish', flag: '🇪🇸', name: 'Spanish' },
-        { code: 'French', flag: '🇫🇷', name: 'French' },
-        { code: 'German', flag: '🇩🇪', name: 'German' },
-        { code: 'Italian', flag: '🇮🇹', name: 'Italian' },
-        { code: 'Portuguese', flag: '🇵🇹', name: 'Portuguese' },
-        { code: 'Japanese', flag: '🇯🇵', name: 'Japanese' },
-        { code: 'Korean', flag: '🇰🇷', name: 'Korean' },
-        { code: 'Chinese', flag: '🇨🇳', name: 'Chinese' },
-        { code: 'Russian', flag: '🇷🇺', name: 'Russian' },
-        { code: 'Arabic', flag: '🇸🇦', name: 'Arabic' }
+        { code: 'Chinese', flag: '🇨🇳', name: 'Chinese' }
     ],
 
-    selectedLanguage: null,
+    selectedLanguage: 'Chinese',
     userName: '',
 
     render() {
@@ -118,8 +109,8 @@ const OnboardingScreen = {
                     <button onclick="OnboardingScreen.prevStep()" class="mb-4 size-10 rounded-full bg-white/5 flex items-center justify-center">
                         <span class="material-symbols-outlined">arrow_back</span>
                     </button>
-                    <h1 class="text-3xl font-bold mb-2">What language do you want to learn?</h1>
-                    <p class="text-slate-400">You can always change this later in settings</p>
+                    <h1 class="text-3xl font-bold mb-2">You're learning Chinese</h1>
+                    <p class="text-slate-400">LinguaFlow is focused on Chinese study</p>
                 </div>
 
                 <!-- Language Grid -->
@@ -249,7 +240,7 @@ const OnboardingScreen = {
         // Save user preferences
         DataStore.updateUser({
             name: name,
-            targetLanguage: this.selectedLanguage || 'Spanish',
+            targetLanguage: this.selectedLanguage || 'Chinese',
             nativeLanguage: 'English'
         });
 
@@ -257,7 +248,7 @@ const OnboardingScreen = {
 
         // Reset state
         this.currentStep = 0;
-        this.selectedLanguage = null;
+        this.selectedLanguage = 'Chinese';
         this.userName = '';
 
         app.navigate('home');

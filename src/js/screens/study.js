@@ -21,8 +21,10 @@ const StudyScreen = {
         console.log('StudyScreen.init() called with collectionId:', collectionId);
         try {
             this.collectionId = collectionId;
+            const user = DataStore.getUser();
+            const excludedCollectionIds = user.settings?.excludedCollectionIds || [];
             // Get due cards first, but if none due and studyAll, get all cards
-            this.cards = DataStore.getDueCards(collectionId);
+            this.cards = DataStore.getDueCards(collectionId, excludedCollectionIds);
 
             // Defensive check: ensure cards is an array
             if (!Array.isArray(this.cards)) {
@@ -32,7 +34,7 @@ const StudyScreen = {
 
             if (this.cards.length === 0 && (studyAll || collectionId)) {
                 // No due cards - get all cards for this collection to allow practice
-                this.cards = DataStore.getCards(collectionId);
+                this.cards = DataStore.getCards(collectionId, excludedCollectionIds);
 
                 // Defensive check: ensure cards is an array
                 if (!Array.isArray(this.cards)) {
@@ -100,6 +102,47 @@ const StudyScreen = {
         }
     },
 
+    escapeHtml(text) {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    renderPinyin(text, reading) {
+        if (!text) return '';
+        if (!reading) return this.escapeHtml(text);
+
+        const tokens = reading
+            .trim()
+            .split(/\s+/)
+            .map(token => token.replace(/[，。！？,.!?]/g, ''))
+            .filter(Boolean);
+
+        let tokenIndex = 0;
+        return Array.from(text).map(char => {
+            if (/\s/.test(char)) {
+                return char;
+            }
+
+            const escapedChar = this.escapeHtml(char);
+            if (/[\u4E00-\u9FFF]/.test(char) && tokenIndex < tokens.length) {
+                const escapedReading = this.escapeHtml(tokens[tokenIndex]);
+                tokenIndex += 1;
+                return `
+                    <ruby class="inline-flex flex-col items-center leading-tight">
+                        <span>${escapedChar}</span>
+                        <rt class="text-xs text-slate-400">${escapedReading}</rt>
+                    </ruby>
+                `;
+            }
+
+            return escapedChar;
+        }).join('');
+    },
+
     render() {
         console.log('StudyScreen.render() called');
         const container = document.getElementById('screen-study');
@@ -124,6 +167,8 @@ const StudyScreen = {
             }
 
             const collection = DataStore.getCollection(card.collectionId);
+            const frontMarkup = this.renderPinyin(card.front, card.reading);
+            const exampleMarkup = card.example ? this.renderPinyin(card.example, card.exampleReading) : '';
             const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
 
             container.innerHTML = `
@@ -173,8 +218,7 @@ const StudyScreen = {
                         <div class="flex-1 flex flex-col items-center p-6 text-center relative z-10 ${card.image ? '-mt-6' : ''}">
                             <!-- Question (Front) -->
                             <div class="flex flex-col items-center gap-1 mb-8">
-                                <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${card.front}</h1>
-                                ${card.reading ? `<p class="text-xl text-slate-400 dark:text-primary/80 font-medium">(${card.reading})</p>` : ''}
+                                <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${frontMarkup}</h1>
 
                                 <!-- Pronunciation button on front (only when not flipped) -->
                                 ${!this.isFlipped ? `
@@ -201,9 +245,13 @@ const StudyScreen = {
                                     <!-- Context Sentence -->
                                     ${card.example ? `
                                         <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5">
-                                            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-2 text-left">Example</p>
-                                            <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${card.example}</p>
-                                            ${card.exampleReading ? `<p class="text-sm text-primary/70 mt-1">${card.exampleReading}</p>` : ''}
+                                            <div class="flex items-center justify-between mb-2">
+                                                <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold text-left">Example</p>
+                                                <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                                    <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
+                                                </button>
+                                            </div>
+                                            <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${exampleMarkup}</p>
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
                                         </div>
                                     ` : ''}
@@ -549,6 +597,111 @@ const StudyScreen = {
         } catch (error) {
             console.error('❌ Unexpected error in playAudio():', error);
             app.showToast(`Audio error: ${error.message}`, 'error');
+        }
+    },
+
+    async playExampleAudio() {
+        const card = this.cards[this.currentIndex];
+        if (!card || !card.example) {
+            console.error('No example available for audio playback');
+            return;
+        }
+
+        console.log(`🔊 playExampleAudio() called for card: "${card.front}"`);
+        console.log(`   - Has cached example audio: ${!!card.exampleAudio}`);
+        console.log(`   - API configured: ${GeminiService.isConfigured()}`);
+        console.log(`   - API key: ${GeminiService.getApiKey() ? GeminiService.getApiKey().substring(0, 10) + '...' : 'NOT SET'}`);
+
+        try {
+            let audioData = card.exampleAudio;
+
+            // Generate TTS if no audio exists
+            if (!audioData) {
+                if (!GeminiService.isConfigured()) {
+                    app.showToast('Configure Gemini API key in Settings to enable audio', 'error');
+                    return;
+                }
+
+                app.showToast('Generating example audio...', 'info');
+                console.log(`🎙️ Generating example TTS for: "${card.example}"`);
+
+                // Get target language for proper voice selection
+                const collection = DataStore.getCollection(card.collectionId);
+                const user = DataStore.getUser();
+                const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+
+                try {
+                    // Try Cloud TTS first (more reliable, language-specific)
+                    // Timeout: 10 seconds (Cloud TTS is faster than Gemini)
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
+                    );
+
+                    try {
+                        audioData = await Promise.race([
+                            GeminiService.generateCloudTTS(card.example, targetLanguage),
+                            timeoutPromise
+                        ]);
+                    } catch (cloudError) {
+                        // If Cloud TTS fails (403/404) or Supabase not configured, fall back to Gemini TTS
+                        if (cloudError.message && (cloudError.message.includes('403') || cloudError.message.includes('404') || cloudError.message.includes('not configured'))) {
+                            console.warn('⚠️ Cloud TTS not available, falling back to Gemini TTS');
+                            app.showToast('Using Gemini TTS', 'info');
+
+                            // Fallback to Gemini TTS with retry logic
+                            const geminiTimeout = new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout')), 20000)
+                            );
+
+                            audioData = await Promise.race([
+                                GeminiService.generateTTS(card.example),
+                                geminiTimeout
+                            ]);
+                        } else {
+                            throw cloudError;
+                        }
+                    }
+
+                    if (!audioData) {
+                        throw new Error('API returned empty audio data');
+                    }
+
+                    console.log(`✅ Example TTS generated successfully, audio data length: ${audioData.length}`);
+
+                    // Save audio to card for future use
+                    await DataStore.updateCard(card.id, { exampleAudio: audioData });
+                    card.exampleAudio = audioData;
+                    console.log('💾 Example audio saved to card');
+                    app.showToast('Example pronunciation ready!', 'success');
+
+                } catch (genError) {
+                    if (genError.message === 'Timeout') {
+                        console.error('❌ Example TTS generation timed out');
+                        app.showToast('Audio generation timed out. Please try again.', 'error');
+                    } else if (genError.message.includes('API key')) {
+                        console.error('❌ API key error:', genError);
+                        app.showToast('API key issue. Please check your settings.', 'error');
+                    } else {
+                        console.error('❌ Example TTS generation failed:', genError);
+                        app.showToast('Failed to generate example audio. Try again later.', 'error');
+                    }
+                    return;
+                }
+            }
+
+            // Play audio if available
+            if (audioData) {
+                try {
+                    const audio = new Audio(audioData);
+                    audio.play();
+                } catch (playError) {
+                    console.error('Failed to play example audio:', playError);
+                    app.showToast('Failed to play audio', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Error playing example audio:', error);
+            app.showToast('Audio playback error', 'error');
         }
     },
 

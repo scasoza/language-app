@@ -16,6 +16,8 @@ const SettingsScreen = {
             const user = DataStore.getUser();
             const stats = DataStore.getStats();
             const apiConfigured = GeminiService.isConfigured();
+            const collections = DataStore.getCollections();
+            const excludedCollectionIds = user.settings?.excludedCollectionIds || [];
 
             container.innerHTML = `
             <!-- Top App Bar -->
@@ -96,7 +98,7 @@ const SettingsScreen = {
                         </div>
 
                         <!-- Target Language -->
-                        <button onclick="SettingsScreen.showLanguageSelector()" class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors w-full">
+                        <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50">
                             <div class="flex items-center gap-3">
                                 <div class="bg-blue-500/10 p-2 rounded-lg">
                                     <span class="material-symbols-outlined text-blue-500 text-[20px]">translate</span>
@@ -105,9 +107,8 @@ const SettingsScreen = {
                             </div>
                             <div class="flex items-center gap-2 text-slate-400">
                                 <span class="text-sm font-semibold">${user.targetLanguage}</span>
-                                <span class="material-symbols-outlined text-[20px]">chevron_right</span>
                             </div>
-                        </button>
+                        </div>
 
                         <!-- Audio Auto-play -->
                         <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50">
@@ -136,6 +137,45 @@ const SettingsScreen = {
                                 <label class="toggle-label block overflow-hidden h-6 rounded-full ${user.settings.darkMode ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'} cursor-pointer"></label>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Study Filters -->
+                <div class="px-4 mt-6">
+                    <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider px-2 mb-2">Study Filters</h3>
+                    <div class="bg-white dark:bg-slate-800/50 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-emerald-500/10 p-2 rounded-lg">
+                                    <span class="material-symbols-outlined text-emerald-500 text-[20px]">filter_alt</span>
+                                </div>
+                                <span class="font-medium">Exclude collections</span>
+                            </div>
+                            <button onclick="SettingsScreen.clearExcludedCollections()" class="text-xs font-semibold text-primary hover:text-primary/80 ${excludedCollectionIds.length === 0 ? 'opacity-40 pointer-events-none' : ''}">
+                                Clear
+                            </button>
+                        </div>
+                        ${collections.length === 0 ? `
+                            <div class="p-4 text-sm text-slate-500 dark:text-slate-400">
+                                No collections yet. Create one to customize mixed review.
+                            </div>
+                        ` : collections.map(collection => {
+                            const isExcluded = excludedCollectionIds.includes(collection.id);
+                            return `
+                                <button onclick="SettingsScreen.toggleExcludedCollection('${collection.id}')" class="w-full flex items-center justify-between p-4 border-t border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                                    <div class="flex items-center gap-3 text-left">
+                                        <span class="text-lg">${collection.emoji || '📚'}</span>
+                                        <div class="flex flex-col">
+                                            <span class="font-medium">${collection.name}</span>
+                                            <span class="text-xs text-slate-400">${collection.cardCount || 0} cards</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs font-semibold px-2 py-1 rounded-full ${isExcluded ? 'bg-rose-500/15 text-rose-500' : 'bg-emerald-500/15 text-emerald-500'}">
+                                        ${isExcluded ? 'Excluded' : 'Included'}
+                                    </span>
+                                </button>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
 
@@ -207,6 +247,37 @@ const SettingsScreen = {
         app.showToast(`Daily goal set to ${goal} cards`, 'success');
     },
 
+    toggleExcludedCollection(collectionId) {
+        const user = DataStore.getUser();
+        const excludedCollectionIds = new Set(user.settings?.excludedCollectionIds || []);
+
+        if (excludedCollectionIds.has(collectionId)) {
+            excludedCollectionIds.delete(collectionId);
+        } else {
+            excludedCollectionIds.add(collectionId);
+        }
+
+        DataStore.updateUser({
+            settings: {
+                ...user.settings,
+                excludedCollectionIds: Array.from(excludedCollectionIds)
+            }
+        });
+
+        this.render();
+    },
+
+    clearExcludedCollections() {
+        const user = DataStore.getUser();
+        DataStore.updateUser({
+            settings: {
+                ...user.settings,
+                excludedCollectionIds: []
+            }
+        });
+        this.render();
+    },
+
     toggleSetting(setting) {
         const user = DataStore.getUser();
         const newSettings = { ...user.settings, [setting]: !user.settings[setting] };
@@ -226,7 +297,7 @@ const SettingsScreen = {
     },
 
     showLanguageSelector() {
-        const languages = ['Spanish', 'French', 'German', 'Japanese', 'Korean', 'Chinese', 'Italian', 'Portuguese'];
+        const languages = ['Chinese'];
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
