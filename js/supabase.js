@@ -7,14 +7,35 @@ const SupabaseService = {
     client: null,
     user: null,
     initialized: false,
+    missingConfig: null,
+    initError: null,
 
     // Initialize Supabase client
     async init() {
         const supabaseUrl = window.SUPABASE_URL || localStorage.getItem('supabase_url');
         const supabaseKey = window.SUPABASE_ANON_KEY || localStorage.getItem('supabase_key');
+        const missingUrl = !supabaseUrl;
+        const missingKey = !supabaseKey;
 
-        if (!supabaseUrl || !supabaseKey) {
+        this.missingConfig = null;
+        this.initError = null;
+
+        if (missingUrl || missingKey) {
+            const missingParts = [];
+            if (missingUrl) missingParts.push('SUPABASE_URL');
+            if (missingKey) missingParts.push('SUPABASE_ANON_KEY');
+            const message = `Supabase configuration missing: ${missingParts.join(', ')}`;
+
+            console.error(message);
             console.warn('Supabase not configured, using localStorage fallback');
+            this.missingConfig = { missingUrl, missingKey, message };
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('supabase:missing-config', {
+                    detail: { missingUrl, missingKey, message }
+                }));
+            }
+
             this.initialized = false;
             return false;
         }
@@ -48,6 +69,12 @@ const SupabaseService = {
         } catch (error) {
             console.error('Failed to initialize Supabase:', error);
             this.initialized = false;
+            this.initError = error;
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('supabase:init-failed', { detail: { error } }));
+            }
+
             return false;
         }
     },
@@ -331,6 +358,7 @@ const SupabaseService = {
                 example: card.example,
                 example_translation: card.exampleTranslation,
                 example_reading: card.exampleReading,
+                example_audio: card.exampleAudio,
                 image: card.image,
                 audio: card.audio,
                 difficulty: card.difficulty ?? 2,
@@ -489,6 +517,7 @@ const SupabaseService = {
             example: data.example,
             exampleTranslation: data.example_translation,
             exampleReading: data.example_reading,
+            exampleAudio: data.example_audio,
             image: data.image,
             audio: data.audio,
             difficulty: data.difficulty,
@@ -510,6 +539,7 @@ const SupabaseService = {
         if (data.example !== undefined) result.example = data.example;
         if (data.exampleTranslation !== undefined) result.example_translation = data.exampleTranslation;
         if (data.exampleReading !== undefined) result.example_reading = data.exampleReading;
+        if (data.exampleAudio !== undefined) result.example_audio = data.exampleAudio;
         if (data.image !== undefined) result.image = data.image;
         if (data.audio !== undefined) result.audio = data.audio;
         if (data.difficulty !== undefined) result.difficulty = data.difficulty;
