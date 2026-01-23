@@ -102,6 +102,47 @@ const StudyScreen = {
         }
     },
 
+    escapeHtml(text) {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    renderPinyin(text, reading) {
+        if (!text) return '';
+        if (!reading) return this.escapeHtml(text);
+
+        const tokens = reading
+            .trim()
+            .split(/\s+/)
+            .map(token => token.replace(/[，。！？,.!?]/g, ''))
+            .filter(Boolean);
+
+        let tokenIndex = 0;
+        return Array.from(text).map(char => {
+            if (/\s/.test(char)) {
+                return char;
+            }
+
+            const escapedChar = this.escapeHtml(char);
+            if (/[\u4E00-\u9FFF]/.test(char) && tokenIndex < tokens.length) {
+                const escapedReading = this.escapeHtml(tokens[tokenIndex]);
+                tokenIndex += 1;
+                return `
+                    <ruby class="inline-flex flex-col items-center leading-tight">
+                        <span>${escapedChar}</span>
+                        <rt class="text-xs text-slate-400">${escapedReading}</rt>
+                    </ruby>
+                `;
+            }
+
+            return escapedChar;
+        }).join('');
+    },
+
     render() {
         console.log('StudyScreen.render() called');
         const container = document.getElementById('screen-study');
@@ -126,6 +167,8 @@ const StudyScreen = {
             }
 
             const collection = DataStore.getCollection(card.collectionId);
+            const frontMarkup = this.renderPinyin(card.front, card.reading);
+            const exampleMarkup = card.example ? this.renderPinyin(card.example, card.exampleReading) : '';
             const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
 
             container.innerHTML = `
@@ -175,8 +218,7 @@ const StudyScreen = {
                         <div class="flex-1 flex flex-col items-center p-6 text-center relative z-10 ${card.image ? '-mt-6' : ''}">
                             <!-- Question (Front) -->
                             <div class="flex flex-col items-center gap-1 mb-8">
-                                <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${card.front}</h1>
-                                ${card.reading ? `<p class="text-xl text-slate-400 dark:text-primary/80 font-medium">(${card.reading})</p>` : ''}
+                                <h1 class="text-6xl md:text-7xl font-bold mb-2 tracking-tighter drop-shadow-lg">${frontMarkup}</h1>
 
                                 <!-- Pronunciation button on front (only when not flipped) -->
                                 ${!this.isFlipped ? `
@@ -209,8 +251,7 @@ const StudyScreen = {
                                                     <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
                                                 </button>
                                             </div>
-                                            <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${card.example}</p>
-                                            ${card.exampleReading ? `<p class="text-sm text-primary/70 mt-1">${card.exampleReading}</p>` : ''}
+                                            <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${exampleMarkup}</p>
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
                                         </div>
                                     ` : ''}

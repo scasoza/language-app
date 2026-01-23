@@ -8,6 +8,7 @@ const AddWordScreen = {
         back: '',
         reading: '',
         example: '',
+        exampleReading: '',
         exampleTranslation: '',
         collectionId: null,
         image: null,
@@ -89,10 +90,10 @@ const AddWordScreen = {
 
                 <!-- Reading/Pronunciation -->
                 <section class="flex flex-col gap-2">
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Pronunciation</label>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Pinyin</label>
                     <input
                         type="text"
-                        placeholder="Phonetic reading..."
+                        placeholder="Pinyin..."
                         value="${this.formData.reading}"
                         oninput="AddWordScreen.updateField('reading', this.value)"
                         class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
@@ -140,6 +141,13 @@ const AddWordScreen = {
                             oninput="AddWordScreen.updateField('example', this.value)"
                             class="w-full bg-transparent border-none p-0 text-sm focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-gray-600 resize-none leading-relaxed"
                         >${this.formData.example}</textarea>
+                        <input
+                            type="text"
+                            placeholder="Example sentence pinyin..."
+                            value="${this.formData.exampleReading}"
+                            oninput="AddWordScreen.updateField('exampleReading', this.value)"
+                            class="w-full bg-transparent border-none p-0 text-sm focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-gray-600 mt-2 pt-2 border-t border-gray-100 dark:border-white/5"
+                        />
                         <textarea
                             placeholder="Translation of example..."
                             rows="2"
@@ -257,6 +265,7 @@ const AddWordScreen = {
                 this.formData.back = card.back || '';
                 this.formData.reading = card.reading || '';
                 this.formData.example = card.example || '';
+                this.formData.exampleReading = card.exampleReading || '';
                 this.formData.exampleTranslation = card.exampleTranslation || '';
                 app.showToast('Generated with AI!', 'success');
             }
@@ -351,6 +360,7 @@ const AddWordScreen = {
                 back: '',
                 reading: '',
                 example: '',
+                exampleReading: '',
                 exampleTranslation: '',
                 collectionId: this.formData.collectionId,
                 image: null,
@@ -372,6 +382,7 @@ const AddWordScreen = {
             back: '',
             reading: '',
             example: '',
+            exampleReading: '',
             exampleTranslation: '',
             collectionId: null,
             image: null,

@@ -50,6 +50,15 @@ const DataStore = {
             // Load cards
             this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
 
+            const localCollections = JSON.parse(localStorage.getItem('linguaflow_collections') || '[]');
+            const localCards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]');
+
+            if (this.cards.length === 0 && localCards.length > 0) {
+                await this.migrateLocalDataToSupabase(localCollections, localCards, this.collections);
+                this.collections = await SupabaseService.getCollections();
+                this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
+            }
+
             // Load dialogues
             this.dialogues = await SupabaseService.getDialogues();
         } catch (error) {
@@ -88,13 +97,58 @@ const DataStore = {
         return normalizedCard;
     },
 
+    async migrateLocalDataToSupabase(localCollections, localCards, existingCollections = []) {
+        const collectionIdMap = new Map();
+        const existingCollectionsByName = new Map(
+            existingCollections.map(collection => [collection.name, collection.id])
+        );
+
+        for (const collection of localCollections) {
+            try {
+                const existingId = existingCollectionsByName.get(collection.name);
+                if (existingId) {
+                    collectionIdMap.set(collection.id, existingId);
+                    continue;
+                }
+
+                const createdCollection = await SupabaseService.addCollection({
+                    name: collection.name,
+                    emoji: collection.emoji,
+                    image: collection.image,
+                    cardCount: collection.cardCount || 0,
+                    mastered: collection.mastered || 0,
+                    dueCards: collection.dueCards || 0
+                });
+                if (createdCollection?.id) {
+                    collectionIdMap.set(collection.id, createdCollection.id);
+                }
+            } catch (error) {
+                console.error('Failed to migrate collection to Supabase:', error);
+            }
+        }
+
+        for (const card of localCards) {
+            const mappedCollectionId = collectionIdMap.get(card.collectionId) || card.collectionId;
+            if (!mappedCollectionId) continue;
+
+            try {
+                await SupabaseService.addCard({
+                    ...card,
+                    collectionId: mappedCollectionId
+                });
+            } catch (error) {
+                console.error('Failed to migrate card to Supabase:', error);
+            }
+        }
+    },
+
     // User methods
     getUser() {
         if (!this.user) {
             return {
                 name: 'Guest',
                 level: 1,
-                targetLanguage: 'Spanish',
+                targetLanguage: 'Chinese',
                 nativeLanguage: 'English',
                 settings: {
                     darkMode: true,
@@ -108,6 +162,7 @@ const DataStore = {
         // Ensure settings object has all default properties
         return {
             ...this.user,
+            targetLanguage: 'Chinese',
             settings: {
                 darkMode: true,
                 audioAutoplay: true,

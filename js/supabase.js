@@ -330,12 +330,15 @@ const SupabaseService = {
                 reading: card.reading,
                 example: card.example,
                 example_translation: card.exampleTranslation,
+                example_reading: card.exampleReading,
                 image: card.image,
                 audio: card.audio,
-                difficulty: card.difficulty || 2,
-                interval: 1,
-                ease_factor: 2.5,
-                review_count: 0
+                difficulty: card.difficulty ?? 2,
+                interval: card.interval ?? 1,
+                ease_factor: card.easeFactor ?? 2.5,
+                review_count: card.reviewCount ?? 0,
+                next_review: card.nextReview || new Date().toISOString(),
+                last_review: card.lastReview || null
             })
             .select()
             .single();
@@ -485,6 +488,7 @@ const SupabaseService = {
             reading: data.reading,
             example: data.example,
             exampleTranslation: data.example_translation,
+            exampleReading: data.example_reading,
             image: data.image,
             audio: data.audio,
             difficulty: data.difficulty,
@@ -505,6 +509,7 @@ const SupabaseService = {
         if (data.reading !== undefined) result.reading = data.reading;
         if (data.example !== undefined) result.example = data.example;
         if (data.exampleTranslation !== undefined) result.example_translation = data.exampleTranslation;
+        if (data.exampleReading !== undefined) result.example_reading = data.exampleReading;
         if (data.image !== undefined) result.image = data.image;
         if (data.audio !== undefined) result.audio = data.audio;
         if (data.difficulty !== undefined) result.difficulty = data.difficulty;

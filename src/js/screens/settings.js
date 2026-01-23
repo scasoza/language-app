@@ -98,7 +98,7 @@ const SettingsScreen = {
                         </div>
 
                         <!-- Target Language -->
-                        <button onclick="SettingsScreen.showLanguageSelector()" class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors w-full">
+                        <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50">
                             <div class="flex items-center gap-3">
                                 <div class="bg-blue-500/10 p-2 rounded-lg">
                                     <span class="material-symbols-outlined text-blue-500 text-[20px]">translate</span>
@@ -107,9 +107,8 @@ const SettingsScreen = {
                             </div>
                             <div class="flex items-center gap-2 text-slate-400">
                                 <span class="text-sm font-semibold">${user.targetLanguage}</span>
-                                <span class="material-symbols-outlined text-[20px]">chevron_right</span>
                             </div>
-                        </button>
+                        </div>
 
                         <!-- Audio Auto-play -->
                         <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50">
@@ -298,7 +297,7 @@ const SettingsScreen = {
     },
 
     showLanguageSelector() {
-        const languages = ['Spanish', 'French', 'German', 'Japanese', 'Korean', 'Chinese', 'Italian', 'Portuguese'];
+        const languages = ['Chinese'];
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
