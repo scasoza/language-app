@@ -52,9 +52,12 @@ const DataStore = {
 
             const localCollections = JSON.parse(localStorage.getItem('linguaflow_collections') || '[]');
             const localCards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]');
+            const migrationFlagKey = 'linguaflow_supabase_migrated';
+            const hasMigrated = localStorage.getItem(migrationFlagKey) === 'true';
 
-            if (this.cards.length === 0 && localCards.length > 0) {
+            if (this.cards.length === 0 && localCards.length > 0 && !hasMigrated) {
                 await this.migrateLocalDataToSupabase(localCollections, localCards, this.collections);
+                localStorage.setItem(migrationFlagKey, 'true');
                 this.collections = await SupabaseService.getCollections();
                 this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
             }

@@ -45,6 +45,8 @@ create table if not exists cards (
     reading text,
     example text,
     example_translation text,
+    example_reading text,
+    example_audio text,
     image text,
     audio text,
     difficulty int default 2,

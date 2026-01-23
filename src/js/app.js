@@ -9,6 +9,7 @@ const app = {
 
     async init() {
         console.log('🚀 Initializing LinguaFlow...');
+        this.registerSupabaseWarnings();
 
         // Initialize Supabase
         await SupabaseService.init();
@@ -16,6 +17,7 @@ const app = {
 
         // Initialize DataStore with Supabase backend
         await DataStore.init();
+        this.maybeShowSupabaseWarning();
 
         // Load API key from user profile if it exists
         const user = DataStore.getUser();
@@ -679,6 +681,71 @@ const app = {
         document.getElementById('ai-image-input').value = '';
         this.updateMultimodalPreview();
         this.showToast('Image removed', 'info');
+    },
+
+    isProduction() {
+        const { hostname, protocol } = window.location;
+        if (protocol === 'file:') return false;
+        const localHosts = ['localhost', '127.0.0.1', '[::1]'];
+        return Boolean(hostname) && !localHosts.includes(hostname);
+    },
+
+    registerSupabaseWarnings() {
+        window.addEventListener('supabase:missing-config', (event) => {
+            const message = event.detail?.message || 'Supabase configuration missing.';
+            this.showToast(message, 'error');
+            if (this.isProduction()) {
+                this.showSupabaseWarningBanner(message);
+            }
+        });
+
+        window.addEventListener('supabase:init-failed', () => {
+            const message = 'Supabase failed to initialize. Using offline storage.';
+            this.showToast(message, 'error');
+            if (this.isProduction()) {
+                this.showSupabaseWarningBanner(message);
+            }
+        });
+    },
+
+    maybeShowSupabaseWarning() {
+        if (!this.isProduction()) return;
+        if (SupabaseService.initialized) return;
+
+        const message = SupabaseService.missingConfig?.message
+            || 'Supabase is unavailable. Using offline storage.';
+
+        this.showSupabaseWarningBanner(message);
+    },
+
+    showSupabaseWarningBanner(message) {
+        const appContainer = document.getElementById('app');
+        if (!appContainer) return;
+
+        let banner = document.getElementById('supabase-warning-banner');
+        if (banner) {
+            const messageNode = banner.querySelector('[data-banner-message]');
+            if (messageNode) messageNode.textContent = message;
+            return;
+        }
+
+        banner = document.createElement('div');
+        banner.id = 'supabase-warning-banner';
+        banner.className = 'sticky top-0 z-[60] w-full px-4 pt-4';
+        banner.innerHTML = `
+            <div class="flex items-start gap-3 rounded-2xl border border-amber-200/60 bg-amber-100/90 px-4 py-3 text-amber-950 shadow-lg dark:border-amber-200/20 dark:bg-amber-500/10 dark:text-amber-100">
+                <span class="material-symbols-outlined text-base">warning</span>
+                <div class="flex-1 text-sm">
+                    <p class="font-semibold">Supabase unavailable</p>
+                    <p class="text-xs text-amber-900/80 dark:text-amber-100/80" data-banner-message>${message}</p>
+                </div>
+                <button type="button" class="text-amber-900/70 hover:text-amber-900 dark:text-amber-100/80 dark:hover:text-amber-100" onclick="document.getElementById('supabase-warning-banner')?.remove()">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+        `;
+
+        appContainer.prepend(banner);
     },
 
     // Toast notifications
