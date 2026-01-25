@@ -7,6 +7,7 @@ const AuthScreen = {
     mode: 'signin', // 'signin', 'signup', 'reset'
     isLoading: false,
     error: null,
+    allowDeveloperSignup: false,
     isDeveloperOnly() {
         return window.LINGUAFLOW_DEV_AUTH_ONLY !== false;
     },
@@ -35,6 +36,13 @@ const AuthScreen = {
                         ${this.isDeveloperOnly() ? `
                             <div class="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-center text-sm text-primary">
                                 Developer login enabled. Multi-user sign-up can be turned on later.
+                            </div>
+                            <div class="mb-4 rounded-xl border border-white/10 bg-surface-dark px-4 py-3 text-xs text-gray-300">
+                                <p class="font-semibold text-white">Need a developer account?</p>
+                                <p class="mt-1 text-gray-400">Create one here so you can sign in and test Supabase storage.</p>
+                                <button onclick="AuthScreen.enableDeveloperSignup()" class="mt-3 w-full rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20">
+                                    Create a developer account
+                                </button>
                             </div>
                         ` : ''}
                         ${this.mode === 'signin' ? this.renderSignIn() : ''}
@@ -105,12 +113,10 @@ const AuthScreen = {
                 <button onclick="AuthScreen.setMode('reset')" class="text-primary text-sm hover:underline">
                     Forgot password?
                 </button>
-                ${this.isDeveloperOnly() ? '' : `
-                    <p class="text-gray-400 text-sm">
-                        Don't have an account?
-                        <button onclick="AuthScreen.setMode('signup')" class="text-primary font-medium hover:underline">Sign up</button>
-                    </p>
-                `}
+                <p class="text-gray-400 text-sm">
+                    Don't have an account?
+                    <button onclick="AuthScreen.setMode('signup')" class="text-primary font-medium hover:underline">Sign up</button>
+                </p>
             </div>
         `;
     },
@@ -118,6 +124,11 @@ const AuthScreen = {
     renderSignUp() {
         return `
             <form onsubmit="AuthScreen.handleSignUp(event)" class="space-y-4">
+                ${this.isDeveloperOnly() ? `
+                    <div class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary">
+                        Creating a developer account will let you sign in and use Supabase storage.
+                    </div>
+                ` : ''}
                 <div>
                     <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Name</label>
                     <input
@@ -203,8 +214,16 @@ const AuthScreen = {
 
     setMode(mode) {
         this.mode = mode;
+        if (mode !== 'signup') {
+            this.allowDeveloperSignup = false;
+        }
         this.error = null;
         this.render();
+    },
+
+    enableDeveloperSignup() {
+        this.allowDeveloperSignup = true;
+        this.setMode('signup');
     },
 
     async handleSignIn(event) {
@@ -240,7 +259,7 @@ const AuthScreen = {
     async handleSignUp(event) {
         event.preventDefault();
 
-        if (this.isDeveloperOnly()) {
+        if (this.isDeveloperOnly() && !this.allowDeveloperSignup) {
             this.error = 'Sign up is disabled while developer-only access is enabled.';
             this.render();
             return;
