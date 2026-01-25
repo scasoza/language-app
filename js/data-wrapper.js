@@ -36,6 +36,34 @@ const DataStore = {
         console.log(`📊 Data loaded: ${this.collections.length} collections, ${this.cards.length} cards`);
     },
 
+    clearLocalDataOnce() {
+        const flagKey = 'linguaflow_local_cleared_v1';
+        if (localStorage.getItem(flagKey) === 'true') {
+            return false;
+        }
+
+        const keysToClear = [
+            'linguaflow_initialized',
+            'linguaflow_onboarded',
+            'linguaflow_user',
+            'linguaflow_collections',
+            'linguaflow_cards',
+            'linguaflow_dialogues',
+            'linguaflow_supabase_migrated'
+        ];
+
+        let cleared = false;
+        keysToClear.forEach(key => {
+            if (localStorage.getItem(key) !== null) {
+                localStorage.removeItem(key);
+                cleared = true;
+            }
+        });
+
+        localStorage.setItem(flagKey, 'true');
+        return cleared;
+    },
+
     async loadFromSupabase() {
         try {
             // Load user profile
