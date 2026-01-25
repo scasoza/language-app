@@ -5,6 +5,7 @@
 const CollectionDetailScreen = {
     collectionId: null,
     isEditing: false,
+    cardEditCallback: null,
 
     setCollection(id) {
         this.collectionId = id;
@@ -168,8 +169,14 @@ const CollectionDetailScreen = {
     },
 
     editCard(cardId) {
-        const card = DataStore.getCards().find(c => c.id === cardId);
+        this.openCardEditModal(cardId, () => this.render());
+    },
+
+    openCardEditModal(cardId, onSave = null) {
+        const card = DataStore.getCard(cardId);
         if (!card) return;
+
+        this.cardEditCallback = typeof onSave === 'function' ? onSave : null;
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
@@ -198,16 +205,21 @@ const CollectionDetailScreen = {
         `);
     },
 
-    saveCardEdit(cardId) {
+    async saveCardEdit(cardId) {
         const front = document.getElementById('edit-card-front')?.value?.trim();
         const back = document.getElementById('edit-card-back')?.value?.trim();
         const example = document.getElementById('edit-card-example')?.value?.trim();
 
         if (front && back) {
-            DataStore.updateCard(cardId, { front, back, example });
+            const updatedCard = await DataStore.updateCard(cardId, { front, back, example });
             app.closeModal();
             app.showToast('Card updated!', 'success');
-            this.render();
+            if (this.cardEditCallback) {
+                this.cardEditCallback(updatedCard);
+                this.cardEditCallback = null;
+            } else {
+                this.render();
+            }
         }
     },
 
@@ -304,7 +316,21 @@ const CollectionDetailScreen = {
                 topic: collection.name,
                 targetLanguage: user.targetLanguage,
                 nativeLanguage: user.nativeLanguage,
-                cardCount: 5
+                cardCount: 5,
+                onBatchProgress: (progress) => {
+                    const { status, batchNumber, expectedBatches, generatedCount, requestedCount } = progress;
+                    const batchLabel = expectedBatches > 1
+                        ? `Batch ${batchNumber} of ${expectedBatches}`
+                        : 'Batch 1';
+                    if (status === 'failed') {
+                        app.updateLoadingOverlay(null, `${batchLabel} failed. Continuing...`);
+                        return;
+                    }
+                    const countLabel = requestedCount
+                        ? `${generatedCount} of ${requestedCount} cards`
+                        : `${generatedCount} cards`;
+                    app.updateLoadingOverlay(null, `${batchLabel} (${countLabel})`);
+                }
             });
 
             if (result.cards && result.cards.length > 0) {
@@ -315,7 +341,14 @@ const CollectionDetailScreen = {
                     });
                 });
                 app.hideLoadingOverlay();
-                app.showToast(`Added ${result.cards.length} new cards!`, 'success');
+                if (result.batchErrors && result.batchErrors.length > 0) {
+                    app.showToast(
+                        `Added ${result.cards.length} of ${result.requestedCardCount || result.cards.length} cards (some batches failed).`,
+                        'info'
+                    );
+                } else {
+                    app.showToast(`Added ${result.cards.length} new cards!`, 'success');
+                }
                 this.render();
             }
         } catch (error) {
@@ -540,6 +573,8 @@ const CollectionDetailScreen = {
         const instructions = document.getElementById('ai-edit-instructions')?.value?.trim();
         const audioData = this.editAudioData;
         const imageData = this.editImageData;
+        const existingCards = DataStore.getCards(this.collectionId);
+        const cardsById = new Map(existingCards.map(card => [card.id, card]));
 
         // Validate inputs
         if (imageData && !audioData && !instructions) {
@@ -580,37 +615,110 @@ const CollectionDetailScreen = {
                 DataStore.updateCollection(this.collectionId, result.collectionUpdates);
             }
 
-            // Remove cards if specified
-            if (result.removeCardIds && result.removeCardIds.length > 0) {
-                result.removeCardIds.forEach(cardId => {
-                    DataStore.deleteCard(cardId);
-                });
-            }
+            const removedCards = [];
+            const removalWarnings = [];
 
-            // Add or modify cards
-            if (result.cards && result.cards.length > 0) {
-                if (result.action === 'modify') {
-                    // Update existing cards
-                    result.cards.forEach(card => {
-                        if (card.cardId) {
-                            DataStore.updateCard(card.cardId, card);
+            const applyRemoveOperation = (operation) => {
+                const collectedIds = new Set();
+                const match = operation.match;
+                const matchKeywords = Array.isArray(match?.keywords)
+                    ? match.keywords.map(keyword => keyword.toLowerCase()).filter(Boolean)
+                    : [];
+                const matchFields = Array.isArray(match?.fields) && match.fields.length > 0
+                    ? match.fields
+                    : ['front', 'example'];
+
+                if (operation.cardId) {
+                    collectedIds.add(operation.cardId);
+                }
+
+                if (Array.isArray(operation.cardIds)) {
+                    operation.cardIds.forEach(id => collectedIds.add(id));
+                }
+
+                if (matchKeywords.length > 0) {
+                    existingCards.forEach(card => {
+                        const haystack = matchFields
+                            .map(field => (card[field] || '').toString().toLowerCase())
+                            .join(' ');
+                        if (matchKeywords.some(keyword => haystack.includes(keyword))) {
+                            collectedIds.add(card.id);
                         }
                     });
-                } else {
-                    // Add new cards
-                    result.cards.forEach(card => {
-                        DataStore.addCard({
-                            ...card,
-                            collectionId: this.collectionId
-                        });
+                }
+
+                if (collectedIds.size === 0) {
+                    removalWarnings.push('No cards matched the removal criteria.');
+                    return;
+                }
+
+                collectedIds.forEach(cardId => {
+                    const card = cardsById.get(cardId);
+                    if (!card) {
+                        removalWarnings.push(`Card ID not found: ${cardId}`);
+                        return;
+                    }
+                    removedCards.push(card);
+                    DataStore.deleteCard(cardId);
+                });
+            };
+
+            const addOperations = [];
+            const modifyOperations = [];
+
+            result.operations.forEach(operation => {
+                if (operation.action === 'remove') {
+                    applyRemoveOperation(operation);
+                    return;
+                }
+                if (operation.action === 'add') {
+                    addOperations.push(operation);
+                    return;
+                }
+                if (operation.action === 'modify') {
+                    modifyOperations.push(operation);
+                }
+            });
+
+            modifyOperations.forEach(operation => {
+                if (operation.cardId && operation.card) {
+                    DataStore.updateCard(operation.cardId, operation.card);
+                }
+            });
+
+            addOperations.forEach(operation => {
+                if (operation.card) {
+                    DataStore.addCard({
+                        ...operation.card,
+                        collectionId: this.collectionId
                     });
                 }
-            }
+            });
 
             app.hideLoadingOverlay();
 
-            const changeCount = (result.cards?.length || 0) + (result.removeCardIds?.length || 0);
+            const changeCount = addOperations.length + modifyOperations.length + removedCards.length;
             app.showToast(`AI applied ${changeCount} change${changeCount !== 1 ? 's' : ''}!`, 'success');
+
+            if (removedCards.length > 0 || removalWarnings.length > 0) {
+                const removedList = removedCards.length > 0
+                    ? `<ul class="mt-2 space-y-1 text-sm text-slate-200">${removedCards.map(card => `<li>• ${card.front} → ${card.back}</li>`).join('')}</ul>`
+                    : '<p class="text-sm text-slate-300">No cards were removed.</p>';
+
+                const warningList = removalWarnings.length > 0
+                    ? `<ul class="mt-2 space-y-1 text-xs text-amber-200">${removalWarnings.map(warning => `<li>⚠️ ${warning}</li>`).join('')}</ul>`
+                    : '';
+
+                app.showModal(`
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold">Removal Summary</h3>
+                        <p class="text-sm text-slate-300 mt-1">Removed ${removedCards.length} card${removedCards.length !== 1 ? 's' : ''}.</p>
+                        ${removedList}
+                        ${warningList}
+                        <button onclick="app.closeModal()" class="mt-4 w-full py-2 bg-primary rounded-lg font-semibold">Close</button>
+                    </div>
+                `);
+            }
 
             this.render();
         } catch (error) {

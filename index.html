@@ -110,24 +110,24 @@
         }
         .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
+        /* Pinyin ruby styling */
+        .pinyin-ruby { display: inline-block; }
+        ruby {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 2px;
+        }
+        rt {
+            font-size: 0.75rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .pinyin-reading { color: #94a3b8; }
+
         /* Toggle switch */
         .toggle-checkbox:checked { right: 0; border-color: #0df280; }
         .toggle-checkbox:checked + .toggle-label { background-color: #0df280; }
-
-        /* Ruby annotations for pinyin */
-        ruby {
-            ruby-align: center;
-            ruby-position: over;
-        }
-        rt {
-            font-size: 0.5em;
-            line-height: 1;
-            color: rgba(13, 242, 128, 0.8);
-            user-select: none;
-        }
-        .dark rt {
-            color: rgba(13, 242, 128, 0.7);
-        }
 
         body { min-height: 100dvh; }
     </style>
