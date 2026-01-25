@@ -136,6 +136,11 @@
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
     <div id="app" class="relative flex min-h-screen w-full flex-col max-w-md lg:max-w-5xl xl:max-w-6xl mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark lg:px-6 lg:py-6">
 
+        <!-- Auth Screen -->
+        <div id="screen-auth" class="screen flex-col min-h-screen">
+            <!-- Content loaded dynamically -->
+        </div>
+
         <!-- Onboarding Screen -->
         <div id="screen-onboarding" class="screen active flex-col h-screen">
             <!-- Content loaded dynamically -->
@@ -274,6 +279,7 @@
     <script src="js/supabase.js"></script>
     <script src="js/data-wrapper.js"></script>
     <script src="js/gemini-service.js"></script>
+    <script src="js/screens/auth.js"></script>
     <script src="js/screens/onboarding.js"></script>
     <script src="js/screens/home.js"></script>
     <script src="js/screens/collections.js"></script>
