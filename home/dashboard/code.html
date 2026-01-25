@@ -50,7 +50,7 @@
   </style>
   </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white overflow-x-hidden antialiased">
-<div class="relative flex min-h-screen w-full flex-col pb-24">
+<div class="relative flex min-h-screen w-full flex-col pb-24 lg:pb-8 max-w-md lg:max-w-3xl xl:max-w-5xl mx-auto">
 <header class="flex items-center justify-between px-4 pt-6 pb-2 sticky top-0 z-10 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
 <div class="flex items-center gap-3">
 <div class="flex items-center justify-center size-10 rounded-full bg-orange-500/10 text-orange-500">
@@ -90,15 +90,15 @@
 </div>
 </section>
 <section class="px-4 py-2">
-<div class="flex gap-4">
-<div class="flex-1 flex flex-col gap-1 rounded-2xl p-4 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+<div class="flex gap-4 lg:gap-6">
+<div class="flex-1 flex flex-col gap-1 rounded-2xl p-4 lg:p-6 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
 <div class="flex items-center gap-2 mb-1">
 <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
 <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Streak</p>
 </div>
 <p class="text-2xl font-bold text-slate-900 dark:text-white">7 Days</p>
 </div>
-<div class="flex-1 flex flex-col gap-1 rounded-2xl p-4 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+<div class="flex-1 flex flex-col gap-1 rounded-2xl p-4 lg:p-6 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
 <div class="flex items-center gap-2 mb-1">
 <span class="material-symbols-outlined text-blue-400 text-xl">school</span>
 <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Learned</p>
@@ -123,7 +123,7 @@
 <h3 class="text-lg font-bold leading-tight">Jump back in</h3>
 <button class="text-sm font-medium text-primary hover:text-primary/80">View all</button>
 </div>
-<div class="flex overflow-x-auto no-scrollbar pb-4 pl-4 gap-4 snap-x">
+<div class="flex overflow-x-auto no-scrollbar pb-4 pl-4 gap-4 snap-x lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
 <div class="snap-start shrink-0 w-60 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
 <div class="h-32 w-full bg-cover bg-center relative" data-alt="Traditional Japanese lanterns glowing at night" data-location="Japan" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDUZmXXbjF61eVaDt-MKT7BjOA1OL7U1EAyuSvTLqZ6Owp4hcZiCcm6WtD0EoQmtizhI9zIUP9Fcv_BTY4jnE00gsTiinCUaZcQclk69zfsjSajA6UYtgbyC8L9bI386zA7l7UoeB51vppfj9UyXe-1cqS3AcUu9BtbfxxoQ8fG9VYkhZD5t4WL2qraL3nF_QvR8j9DTC-rPNCrSzDv3RimJE_1_gm1Jz3WL0AVJ5KEQakU8mY3OxtAUFyPvjtsT2lMcPEdf0ifuMwT");'>
 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -171,7 +171,7 @@
 </div>
 </div>
 </section>
-<nav class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2">
+<nav class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 lg:hidden">
 <div class="relative mx-auto max-w-md h-16 rounded-2xl bg-surface-light/80 dark:bg-[#1a2c24]/80 backdrop-blur-lg shadow-lg border border-white/20 dark:border-white/5 flex items-center justify-around px-2">
 <a class="flex flex-col items-center justify-center w-12 h-12 gap-1 text-primary" href="#">
 <span class="material-symbols-outlined text-[28px] fill">home</span>
