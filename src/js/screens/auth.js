@@ -225,6 +225,12 @@ const AuthScreen = {
         this.allowDeveloperSignup = true;
         this.setMode('signup');
     },
+    normalizeEmail(value) {
+        return value.trim().toLowerCase();
+    },
+    normalizeText(value) {
+        return value.trim();
+    },
 
     async handleSignIn(event) {
         event.preventDefault();
@@ -240,8 +246,8 @@ const AuthScreen = {
             }
         }
 
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
+        const email = this.normalizeEmail(document.getElementById('auth-email').value);
+        const password = this.normalizeText(document.getElementById('auth-password').value);
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -250,7 +256,12 @@ const AuthScreen = {
             await SupabaseService.signIn(email, password);
             await app.handleAuthenticatedSession();
         } catch (error) {
-            this.error = error.message || 'Failed to sign in';
+            const message = error.message || 'Failed to sign in';
+            if (message.includes('Email address') && message.includes('invalid')) {
+                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else {
+                this.error = message;
+            }
             this.isLoading = false;
             this.render();
         }
@@ -275,9 +286,9 @@ const AuthScreen = {
             }
         }
 
-        const name = document.getElementById('auth-name').value;
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
+        const name = this.normalizeText(document.getElementById('auth-name').value);
+        const email = this.normalizeEmail(document.getElementById('auth-email').value);
+        const password = this.normalizeText(document.getElementById('auth-password').value);
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -289,7 +300,12 @@ const AuthScreen = {
             app.showToast('Check your email to confirm your account!', 'success');
             this.setMode('signin');
         } catch (error) {
-            this.error = error.message || 'Failed to create account';
+            const message = error.message || 'Failed to create account';
+            if (message.includes('Email address') && message.includes('invalid')) {
+                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else {
+                this.error = message;
+            }
             this.isLoading = false;
             this.render();
         }
@@ -334,7 +350,7 @@ const AuthScreen = {
             }
         }
 
-        const email = document.getElementById('auth-email').value;
+        const email = this.normalizeEmail(document.getElementById('auth-email').value);
         this.isLoading = true;
         this.error = null;
         this.render();
@@ -344,7 +360,12 @@ const AuthScreen = {
             app.showToast('Check your email for the reset link!', 'success');
             this.setMode('signin');
         } catch (error) {
-            this.error = error.message || 'Failed to send reset email';
+            const message = error.message || 'Failed to send reset email';
+            if (message.includes('Email address') && message.includes('invalid')) {
+                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else {
+                this.error = message;
+            }
             this.isLoading = false;
             this.render();
         }
