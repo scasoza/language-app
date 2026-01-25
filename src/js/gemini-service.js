@@ -16,6 +16,10 @@ const GeminiService = {
         TTS: 'gemini-2.5-flash-preview-tts' // For text-to-speech
     },
 
+    // Card generation batching limits
+    MIN_BATCH_SIZE: 20,
+    MAX_BATCH_SIZE: 50,
+
     // Thinking levels for Gemini 3 (controls reasoning depth)
     THINKING_LEVELS: {
         MINIMAL: 'minimal',  // Fastest, simple tasks
@@ -139,6 +143,54 @@ const GeminiService = {
     // Extract text from API response
     extractText(response) {
         return response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    },
+
+    // Parse JSON response from Gemini
+    parseJsonResponse(text, errorMessage) {
+        try {
+            const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('Failed to parse response:', e, text);
+            throw new Error(errorMessage);
+        }
+    },
+
+    // Extract requested card count from text input
+    extractRequestedCardCount(text) {
+        if (!text) return null;
+        const match = text.match(/\b(\d{1,3})\b/);
+        if (!match) return null;
+        const parsed = Number.parseInt(match[1], 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    },
+
+    getBatchSize(remaining) {
+        if (remaining <= this.MIN_BATCH_SIZE) {
+            return remaining;
+        }
+        return Math.min(this.MAX_BATCH_SIZE, remaining);
+    },
+
+    mergeCards(existingCards, incomingCards, seenFronts) {
+        let added = 0;
+        let duplicates = 0;
+
+        incomingCards.forEach((card) => {
+            const frontKey = (card.front || '').trim().toLowerCase();
+            if (!frontKey) {
+                return;
+            }
+            if (seenFronts.has(frontKey)) {
+                duplicates += 1;
+                return;
+            }
+            seenFronts.add(frontKey);
+            existingCards.push(card);
+            added += 1;
+        });
+
+        return { added, duplicates };
     },
 
     // Extract audio from TTS response and convert PCM to WAV
@@ -308,7 +360,16 @@ Example format:
      * @returns {Promise<Object>} - Collection metadata and cards
      */
     async generateCollectionMultimodal(input) {
-        const { topic, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount } = input;
+        const {
+            topic,
+            audio,
+            image,
+            text,
+            targetLanguage = 'Spanish',
+            nativeLanguage = 'English',
+            cardCount,
+            onBatchProgress
+        } = input;
 
         // Validate inputs - images cannot be used alone
         if (image && !audio && !text && !topic) {
@@ -325,20 +386,38 @@ Example format:
         if (audio) inputDescription += 'Audio input provided.\n';
         if (image) inputDescription += 'Image provided for context.\n';
 
-        const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
+        const requestedCount = this.extractRequestedCardCount(text || topic) || cardCount || 10;
+        const expectedBatches = Math.max(1, Math.ceil(requestedCount / this.MAX_BATCH_SIZE));
+        const allCards = [];
+        const seenFronts = new Set();
+        const batchErrors = [];
+        let collectionMeta = null;
+        let remaining = requestedCount;
+        let batchNumber = 0;
+        let consecutiveFailures = 0;
+        const maxBatches = expectedBatches + 3;
+
+        while (remaining > 0 && batchNumber < maxBatches) {
+            batchNumber += 1;
+            const batchSize = this.getBatchSize(remaining);
+            const metaLine = collectionMeta
+                ? `Use the existing collection metadata: name "${collectionMeta.name}", emoji "${collectionMeta.emoji}", description "${collectionMeta.description}".`
+                : '';
+
+            const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
 
 ${inputDescription}
+${metaLine}
 
-IMPORTANT: First, check if the user has specified how many cards they want in their input (audio or text).
-- If they specify a number (e.g., "create 15 cards", "I want 20 flashcards"), use that number.
-- If no number is specified, use the default: ${cardCount || 10} cards.
+The learner requested ${requestedCount} cards total. This is batch ${batchNumber} of approximately ${expectedBatches}.
+Generate exactly ${batchSize} NEW flashcards in this batch and do not repeat cards from earlier batches.
 
 Generate a collection with:
 1. name: A catchy collection name based on the content
 2. emoji: A single relevant emoji
 3. description: A brief description (1 sentence)
-4. cardCount: The number of cards to generate (extracted from user input or default)
-5. cards: Generate exactly the number of flashcards specified, each with:
+4. cardCount: ${batchSize}
+5. cards: Generate exactly ${batchSize} flashcards, each with:
    - front: word/phrase in ${targetLanguage}
    - back: translation in ${nativeLanguage}
    - reading: ${readingGuide} pronunciation guide
@@ -364,44 +443,101 @@ Format:
   ]
 }`;
 
-        // Build multimodal content array
-        const contents = [{ parts: [{ text: prompt }] }];
-
-        // Add audio if provided (send directly without transcription)
-        if (audio) {
-            contents[0].parts.push({
-                inlineData: {
-                    mimeType: this.detectAudioMimeType(audio),
-                    data: audio.replace(/^data:audio\/\w+;base64,/, '')
-                }
+            onBatchProgress?.({
+                status: 'starting',
+                batchNumber,
+                expectedBatches,
+                batchSize,
+                requestedCount,
+                generatedCount: allCards.length
             });
+
+            const contents = [{ parts: [{ text: prompt }] }];
+
+            if (audio) {
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType: this.detectAudioMimeType(audio),
+                        data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                    }
+                });
+            }
+
+            if (image) {
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType: 'image/jpeg',
+                        data: image.replace(/^data:image\/\w+;base64,/, '')
+                    }
+                });
+            }
+
+            try {
+                const response = await this.callAPI(this.MODELS.FLASH, contents, {
+                    temperature: 0.7,
+                    maxTokens: 8192,
+                    thinkingLevel: this.THINKING_LEVELS.MEDIUM
+                });
+
+                const text_response = this.extractText(response);
+                const parsed = this.parseJsonResponse(text_response, 'Failed to generate collection. Please try again.');
+
+                if (!collectionMeta) {
+                    collectionMeta = {
+                        name: parsed.name || topic,
+                        emoji: parsed.emoji || '📚',
+                        description: parsed.description || ''
+                    };
+                }
+
+                const batchCards = Array.isArray(parsed.cards) ? parsed.cards : [];
+                const { added, duplicates } = this.mergeCards(allCards, batchCards, seenFronts);
+                remaining = requestedCount - allCards.length;
+                consecutiveFailures = 0;
+
+                onBatchProgress?.({
+                    status: 'success',
+                    batchNumber,
+                    expectedBatches,
+                    batchSize,
+                    requestedCount,
+                    generatedCount: allCards.length,
+                    addedCount: added,
+                    duplicates
+                });
+
+                if (added === 0) {
+                    break;
+                }
+            } catch (error) {
+                batchErrors.push({ batchNumber, message: error.message });
+                consecutiveFailures += 1;
+                onBatchProgress?.({
+                    status: 'failed',
+                    batchNumber,
+                    expectedBatches,
+                    batchSize,
+                    requestedCount,
+                    generatedCount: allCards.length,
+                    error
+                });
+                if (consecutiveFailures >= 2) {
+                    break;
+                }
+            }
         }
 
-        // Add image if provided
-        if (image) {
-            contents[0].parts.push({
-                inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: image.replace(/^data:image\/\w+;base64,/, '')
-                }
-            });
-        }
-
-        const response = await this.callAPI(this.MODELS.FLASH, contents, {
-            temperature: 0.7,
-            maxTokens: 8192,
-            thinkingLevel: this.THINKING_LEVELS.MEDIUM
-        });
-
-        const text_response = this.extractText(response);
-
-        try {
-            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
-            return JSON.parse(cleaned);
-        } catch (e) {
-            console.error('Failed to parse collection:', e, text_response);
+        if (allCards.length === 0) {
             throw new Error('Failed to generate collection. Please try again.');
         }
+
+        return {
+            ...(collectionMeta || { name: topic, emoji: '📚', description: '' }),
+            cardCount: allCards.length,
+            requestedCardCount: requestedCount,
+            cards: allCards,
+            batchErrors
+        };
     },
 
     /**
@@ -410,21 +546,50 @@ Format:
      * @returns {Promise<Object>} - Collection metadata and cards
      */
     async generateCollection(input) {
-        const { topic, image, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount = 10 } = input;
+        const {
+            topic,
+            image,
+            targetLanguage = 'Spanish',
+            nativeLanguage = 'English',
+            cardCount = 10,
+            onBatchProgress
+        } = input;
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
         const readingGuide = isChinese ? 'pinyin' : 'phonetic';
 
-        const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
+        const requestedCount = this.extractRequestedCardCount(topic) || cardCount || 10;
+        const expectedBatches = Math.max(1, Math.ceil(requestedCount / this.MAX_BATCH_SIZE));
+        const allCards = [];
+        const seenFronts = new Set();
+        const batchErrors = [];
+        let collectionMeta = null;
+        let remaining = requestedCount;
+        let batchNumber = 0;
+        let consecutiveFailures = 0;
+        const maxBatches = expectedBatches + 3;
+
+        while (remaining > 0 && batchNumber < maxBatches) {
+            batchNumber += 1;
+            const batchSize = this.getBatchSize(remaining);
+            const metaLine = collectionMeta
+                ? `Use the existing collection metadata: name "${collectionMeta.name}", emoji "${collectionMeta.emoji}", description "${collectionMeta.description}".`
+                : '';
+
+            const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
 
 Topic: "${topic}"
 ${image ? 'Use the provided image as context for the vocabulary.' : ''}
+${metaLine}
+
+The learner requested ${requestedCount} cards total. This is batch ${batchNumber} of approximately ${expectedBatches}.
+Generate exactly ${batchSize} NEW flashcards in this batch and do not repeat cards from earlier batches.
 
 Generate a collection with:
 1. name: A catchy collection name
 2. emoji: A single relevant emoji
 3. description: A brief description (1 sentence)
-4. cards: ${cardCount} flashcards with front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
+4. cards: ${batchSize} flashcards with front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
 
 Respond ONLY with valid JSON. No markdown, no explanation.
 
@@ -444,32 +609,92 @@ Format:
   ]
 }`;
 
-        const contents = [{ parts: [{ text: prompt }] }];
-
-        if (image) {
-            contents[0].parts.push({
-                inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: image.replace(/^data:image\/\w+;base64,/, '')
-                }
+            onBatchProgress?.({
+                status: 'starting',
+                batchNumber,
+                expectedBatches,
+                batchSize,
+                requestedCount,
+                generatedCount: allCards.length
             });
+
+            const contents = [{ parts: [{ text: prompt }] }];
+
+            if (image) {
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType: 'image/jpeg',
+                        data: image.replace(/^data:image\/\w+;base64,/, '')
+                    }
+                });
+            }
+
+            try {
+                const response = await this.callAPI(this.MODELS.FLASH, contents, {
+                    temperature: 0.7,
+                    maxTokens: 8192,
+                    thinkingLevel: this.THINKING_LEVELS.MEDIUM
+                });
+
+                const text_response = this.extractText(response);
+                const parsed = this.parseJsonResponse(text_response, 'Failed to generate collection. Please try again.');
+
+                if (!collectionMeta) {
+                    collectionMeta = {
+                        name: parsed.name || topic,
+                        emoji: parsed.emoji || '📚',
+                        description: parsed.description || ''
+                    };
+                }
+
+                const batchCards = Array.isArray(parsed.cards) ? parsed.cards : [];
+                const { added, duplicates } = this.mergeCards(allCards, batchCards, seenFronts);
+                remaining = requestedCount - allCards.length;
+                consecutiveFailures = 0;
+
+                onBatchProgress?.({
+                    status: 'success',
+                    batchNumber,
+                    expectedBatches,
+                    batchSize,
+                    requestedCount,
+                    generatedCount: allCards.length,
+                    addedCount: added,
+                    duplicates
+                });
+
+                if (added === 0) {
+                    break;
+                }
+            } catch (error) {
+                batchErrors.push({ batchNumber, message: error.message });
+                consecutiveFailures += 1;
+                onBatchProgress?.({
+                    status: 'failed',
+                    batchNumber,
+                    expectedBatches,
+                    batchSize,
+                    requestedCount,
+                    generatedCount: allCards.length,
+                    error
+                });
+                if (consecutiveFailures >= 2) {
+                    break;
+                }
+            }
         }
 
-        const response = await this.callAPI(this.MODELS.FLASH, contents, {
-            temperature: 0.7,
-            maxTokens: 8192,
-            thinkingLevel: this.THINKING_LEVELS.MEDIUM // More reasoning for comprehensive collection
-        });
-
-        const text_response = this.extractText(response);
-
-        try {
-            const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
-            return JSON.parse(cleaned);
-        } catch (e) {
-            console.error('Failed to parse collection:', e, text_response);
+        if (allCards.length === 0) {
             throw new Error('Failed to generate collection. Please try again.');
         }
+
+        return {
+            ...(collectionMeta || { name: topic, emoji: '📚', description: '' }),
+            cardCount: allCards.length,
+            requestedCardCount: requestedCount,
+            cards: allCards,
+            batchErrors
+        };
     },
 
     /**

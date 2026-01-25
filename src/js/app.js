@@ -276,7 +276,27 @@ const app = {
                     image: imageData,
                     targetLanguage: user.targetLanguage,
                     nativeLanguage: user.nativeLanguage,
-                    cardCount: 10  // Default, but AI will extract from audio/text if specified
+                    cardCount: 10,  // Default, but AI will extract from text if specified
+                    onBatchProgress: (progress) => {
+                        const { status, batchNumber, expectedBatches, generatedCount, requestedCount } = progress;
+                        const batchLabel = expectedBatches > 1
+                            ? `Batch ${batchNumber} of ${expectedBatches}`
+                            : 'Batch 1';
+                        if (status === 'failed') {
+                            this.updatePlaceholderCollectionMessage(
+                                placeholderId,
+                                `${batchLabel} failed. Continuing...`
+                            );
+                            return;
+                        }
+                        const countLabel = requestedCount
+                            ? `${generatedCount} of ${requestedCount} cards`
+                            : `${generatedCount} cards`;
+                        this.updatePlaceholderCollectionMessage(
+                            placeholderId,
+                            `Generating with AI... ${batchLabel} (${countLabel})`
+                        );
+                    }
                 });
 
                 // Clear multimodal data after use
@@ -320,7 +340,14 @@ const app = {
                 const savedCards = DataStore.getCards(collection.id);
                 console.log(`Verification: ${savedCards.length} cards in collection ${collection.id}`);
 
-                this.showToast(`Created "${result.name}" with ${savedCards.length} cards!`, 'success');
+                if (result.batchErrors && result.batchErrors.length > 0) {
+                    this.showToast(
+                        `Created "${result.name}" with ${savedCards.length} of ${result.requestedCardCount || savedCards.length} cards (some batches failed).`,
+                        'info'
+                    );
+                } else {
+                    this.showToast(`Created "${result.name}" with ${savedCards.length} cards!`, 'success');
+                }
 
                 // Refresh screen
                 if (this.currentScreen === 'collections') {
@@ -449,13 +476,28 @@ const app = {
                     <span class="material-symbols-outlined text-3xl text-primary animate-pulse">auto_awesome</span>
                 </div>
             </div>
-            <h2 class="text-2xl font-bold mb-2 text-center">${title}</h2>
-            <p class="text-slate-400 text-center mb-8">${subtitle}</p>
+            <h2 class="text-2xl font-bold mb-2 text-center" data-loading-title>${title}</h2>
+            <p class="text-slate-400 text-center mb-8" data-loading-subtitle>${subtitle}</p>
             <div class="max-w-sm p-4 rounded-xl bg-surface-dark border border-white/5">
                 <p class="text-sm text-slate-300 text-center italic">"${tip}"</p>
             </div>
         `;
         document.body.appendChild(overlay);
+    },
+
+    updateLoadingOverlay(title = null, subtitle = null) {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+
+        if (title !== null) {
+            const titleEl = overlay.querySelector('[data-loading-title]');
+            if (titleEl) titleEl.textContent = title;
+        }
+
+        if (subtitle !== null) {
+            const subtitleEl = overlay.querySelector('[data-loading-subtitle]');
+            if (subtitleEl) subtitleEl.textContent = subtitle;
+        }
     },
 
     hideLoadingOverlay() {
@@ -785,6 +827,12 @@ const app = {
         // Only add placeholder if we're on collections screen
         if (this.currentScreen === 'collections') {
             CollectionsScreen.addPlaceholder(id, topic, emoji);
+        }
+    },
+
+    updatePlaceholderCollectionMessage(id, message) {
+        if (this.currentScreen === 'collections') {
+            CollectionsScreen.updatePlaceholderMessage(id, message);
         }
     },
 

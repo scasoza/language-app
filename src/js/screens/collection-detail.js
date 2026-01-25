@@ -316,7 +316,21 @@ const CollectionDetailScreen = {
                 topic: collection.name,
                 targetLanguage: user.targetLanguage,
                 nativeLanguage: user.nativeLanguage,
-                cardCount: 5
+                cardCount: 5,
+                onBatchProgress: (progress) => {
+                    const { status, batchNumber, expectedBatches, generatedCount, requestedCount } = progress;
+                    const batchLabel = expectedBatches > 1
+                        ? `Batch ${batchNumber} of ${expectedBatches}`
+                        : 'Batch 1';
+                    if (status === 'failed') {
+                        app.updateLoadingOverlay(null, `${batchLabel} failed. Continuing...`);
+                        return;
+                    }
+                    const countLabel = requestedCount
+                        ? `${generatedCount} of ${requestedCount} cards`
+                        : `${generatedCount} cards`;
+                    app.updateLoadingOverlay(null, `${batchLabel} (${countLabel})`);
+                }
             });
 
             if (result.cards && result.cards.length > 0) {
@@ -327,7 +341,14 @@ const CollectionDetailScreen = {
                     });
                 });
                 app.hideLoadingOverlay();
-                app.showToast(`Added ${result.cards.length} new cards!`, 'success');
+                if (result.batchErrors && result.batchErrors.length > 0) {
+                    app.showToast(
+                        `Added ${result.cards.length} of ${result.requestedCardCount || result.cards.length} cards (some batches failed).`,
+                        'info'
+                    );
+                } else {
+                    app.showToast(`Added ${result.cards.length} new cards!`, 'success');
+                }
                 this.render();
             }
         } catch (error) {
