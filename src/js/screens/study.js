@@ -593,6 +593,7 @@ const StudyScreen = {
                 console.log('✅ Audio played successfully');
             } else {
                 console.warn('⚠️ No audio data available after generation attempt');
+                app.showToast('No audio available for this card yet.', 'error');
             }
         } catch (error) {
             console.error('❌ Unexpected error in playAudio():', error);
@@ -698,6 +699,9 @@ const StudyScreen = {
                     console.error('Failed to play example audio:', playError);
                     app.showToast('Failed to play audio', 'error');
                 }
+            } else {
+                console.warn('⚠️ No example audio data available after generation attempt');
+                app.showToast('No example audio available yet.', 'error');
             }
         } catch (error) {
             console.error('Error playing example audio:', error);
