@@ -181,8 +181,36 @@
             <!-- Content loaded dynamically -->
         </div>
 
+        <!-- Desktop Navigation -->
+        <nav id="desktop-nav" class="hidden lg:flex fixed top-0 left-0 right-0 z-50 px-8 pt-6">
+            <div class="mx-auto w-full max-w-5xl rounded-2xl bg-surface-light/80 dark:bg-[#1a2c24]/80 backdrop-blur-lg shadow-lg border border-white/20 dark:border-white/5 flex items-center justify-between px-6 py-3">
+                <div class="flex items-center gap-2">
+                    <button onclick="app.navigate('home')" data-nav="home" class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                        <span class="material-symbols-outlined text-xl">home</span>
+                        <span class="text-sm font-medium">Home</span>
+                    </button>
+                    <button onclick="app.navigate('dialogue-settings')" data-nav="dialogue-settings" class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                        <span class="material-symbols-outlined text-xl">forum</span>
+                        <span class="text-sm font-medium">Dialogue</span>
+                    </button>
+                    <button onclick="app.navigate('collections')" data-nav="collections" class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                        <span class="material-symbols-outlined text-xl">style</span>
+                        <span class="text-sm font-medium">Decks</span>
+                    </button>
+                    <button onclick="app.navigate('settings')" data-nav="settings" class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                        <span class="material-symbols-outlined text-xl">person</span>
+                        <span class="text-sm font-medium">Profile</span>
+                    </button>
+                </div>
+                <button onclick="app.navigate('add-word')" class="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-background-dark shadow-[0_4px_12px_rgba(13,242,128,0.4)] hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-2xl">add</span>
+                    <span class="text-sm font-semibold">Add Word</span>
+                </button>
+            </div>
+        </nav>
+
         <!-- Bottom Navigation (shows on main screens) -->
-        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 hidden">
+        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 hidden lg:hidden">
             <div class="relative mx-auto max-w-md h-16 rounded-2xl bg-surface-light/80 dark:bg-[#1a2c24]/80 backdrop-blur-lg shadow-lg border border-white/20 dark:border-white/5 flex items-center justify-around px-2">
                 <button onclick="app.navigate('home')" data-nav="home" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                     <span class="material-symbols-outlined text-[28px]">home</span>
