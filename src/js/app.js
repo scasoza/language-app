@@ -10,42 +10,23 @@ const app = {
     async init() {
         console.log('🚀 Initializing LinguaFlow...');
         this.registerSupabaseWarnings();
+        this.registerAuthEvents();
 
         // Initialize Supabase
         await SupabaseService.init();
         console.log('✅ Supabase initialized:', SupabaseService.initialized);
 
-        // Initialize DataStore with Supabase backend
-        await DataStore.init();
-        this.maybeShowSupabaseWarning();
-
-        // Load API key from user profile if it exists
-        const user = DataStore.getUser();
-        if (user && user.geminiApiKey) {
-            console.log('📝 Loading API key from user profile');
-            GeminiService.API_KEY = user.geminiApiKey;
-            localStorage.setItem('gemini_api_key', user.geminiApiKey);
-        } else {
-            // Try to load from localStorage as fallback
-            const apiKey = localStorage.getItem('gemini_api_key');
-            if (apiKey) {
-                console.log('📝 Loading API key from localStorage');
-                GeminiService.API_KEY = apiKey;
+        if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
+            const cleared = DataStore.clearLocalDataOnce();
+            if (cleared) {
+                console.log('🧹 Cleared local storage data for a fresh Supabase login.');
             }
+            this.navigate('auth');
+            console.log('✅ App initialized');
+            return;
         }
 
-        // Check if onboarded
-        if (DataStore.isOnboarded()) {
-            this.navigate('home');
-        } else {
-            this.navigate('onboarding');
-        }
-
-        // Apply dark mode from settings
-        if (user) {
-            document.documentElement.classList.toggle('dark', user.settings.darkMode);
-        }
-
+        await this.handleAuthenticatedSession();
         console.log('✅ App initialized');
     },
 
@@ -75,6 +56,9 @@ const app = {
 
     renderScreen(screenId) {
         switch (screenId) {
+            case 'auth':
+                AuthScreen.render();
+                break;
             case 'onboarding':
                 OnboardingScreen.render();
                 break;
@@ -138,6 +122,44 @@ const app = {
             }
         } else {
             this.navigate('home', false);
+        }
+    },
+
+    registerAuthEvents() {
+        window.addEventListener('auth:signout', () => {
+            this.navigate('auth');
+        });
+    },
+
+    async handleAuthenticatedSession() {
+        await DataStore.init();
+        this.maybeShowSupabaseWarning();
+
+        const user = DataStore.getUser();
+        this.applyUserSettings(user);
+
+        if (DataStore.isOnboarded()) {
+            this.navigate('home');
+        } else {
+            this.navigate('onboarding');
+        }
+    },
+
+    applyUserSettings(user) {
+        if (user && user.geminiApiKey) {
+            console.log('📝 Loading API key from user profile');
+            GeminiService.API_KEY = user.geminiApiKey;
+            localStorage.setItem('gemini_api_key', user.geminiApiKey);
+        } else {
+            const apiKey = localStorage.getItem('gemini_api_key');
+            if (apiKey) {
+                console.log('📝 Loading API key from localStorage');
+                GeminiService.API_KEY = apiKey;
+            }
+        }
+
+        if (user) {
+            document.documentElement.classList.toggle('dark', user.settings.darkMode);
         }
     },
 
