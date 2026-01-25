@@ -195,10 +195,12 @@ const SupabaseService = {
             .from('profiles')
             .select('*')
             .eq('id', this.user.id)
-            .single();
+            .maybeSingle();
 
         if (error) {
-            console.error('Error fetching profile:', error);
+            if (error.code !== 'PGRST116') {
+                console.error('Error fetching profile:', error);
+            }
             return null;
         }
         return this.transformProfile(data);
