@@ -113,10 +113,12 @@ const AuthScreen = {
                 <button onclick="AuthScreen.setMode('reset')" class="text-primary text-sm hover:underline">
                     Forgot password?
                 </button>
-                <p class="text-gray-400 text-sm">
-                    Don't have an account?
-                    <button onclick="AuthScreen.setMode('signup')" class="text-primary font-medium hover:underline">Sign up</button>
-                </p>
+                ${this.isDeveloperOnly() ? '' : `
+                    <p class="text-gray-400 text-sm">
+                        Don't have an account?
+                        <button onclick="AuthScreen.setMode('signup')" class="text-primary font-medium hover:underline">Sign up</button>
+                    </p>
+                `}
             </div>
         `;
     },
