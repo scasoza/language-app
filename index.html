@@ -265,11 +265,52 @@
     </div>
 
     <!-- Load App Scripts -->
-    <script src="/api/config.js"></script>
     <script>
-        // Supabase Configuration - Set your values here or in localStorage
-        window.SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('supabase_url') || 'https://fzwoakgdmktjzlzxxvze.supabase.co';
-        window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('supabase_key') || 'YOUR_SUPABASE_ANON_KEY';
+        // Supabase Configuration - loaded from Vercel Edge Function or fallback
+        window.configLoaded = new Promise(async (resolve) => {
+            try {
+                // Fetch config from Vercel Edge Function
+                const response = await fetch('/api/config.js');
+                if (response.ok) {
+                    const script = await response.text();
+                    // Execute the config script (sets window.SUPABASE_URL and window.SUPABASE_ANON_KEY)
+                    eval(script);
+                    console.log('✅ Config loaded from Vercel Edge Function');
+                } else {
+                    console.warn('⚠️ Edge Function returned status:', response.status);
+                }
+            } catch (e) {
+                console.warn('⚠️ Failed to fetch config from Edge Function:', e);
+            }
+
+            // Fallback: check for valid values (not empty strings or placeholders)
+            const hasValidUrl = window.SUPABASE_URL && window.SUPABASE_URL.length > 0;
+            const hasValidKey = window.SUPABASE_ANON_KEY &&
+                               window.SUPABASE_ANON_KEY.length > 0 &&
+                               window.SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+
+            if (!hasValidUrl) {
+                window.SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://fzwoakgdmktjzlzxxvze.supabase.co';
+                console.log('ℹ️ Using fallback SUPABASE_URL');
+            }
+            if (!hasValidKey) {
+                const storedKey = localStorage.getItem('supabase_key');
+                if (storedKey && storedKey.length > 20) {
+                    window.SUPABASE_ANON_KEY = storedKey;
+                    console.log('ℹ️ Using SUPABASE_ANON_KEY from localStorage');
+                } else {
+                    console.error('❌ No valid SUPABASE_ANON_KEY found! Data will only be saved locally.');
+                    console.error('   Set SUPABASE_ANON_KEY in Vercel environment variables or localStorage');
+                }
+            }
+
+            console.log('🔧 Supabase Config:', {
+                url: window.SUPABASE_URL ? '✓ Set' : '✗ Missing',
+                key: (window.SUPABASE_ANON_KEY && window.SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') ? '✓ Set' : '✗ Missing/Invalid'
+            });
+
+            resolve();
+        });
     </script>
     <script src="js/supabase.js"></script>
     <script src="js/data-wrapper.js"></script>

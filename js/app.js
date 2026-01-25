@@ -11,6 +11,11 @@ const app = {
         console.log('🚀 Initializing LinguaFlow...');
         this.registerSupabaseWarnings();
 
+        // Wait for config to be loaded from Vercel Edge Function
+        if (window.configLoaded) {
+            await window.configLoaded;
+        }
+
         // Initialize Supabase
         await SupabaseService.init();
         console.log('✅ Supabase initialized:', SupabaseService.initialized);
