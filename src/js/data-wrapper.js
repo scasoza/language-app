@@ -96,6 +96,7 @@ const DataStore = {
         if (normalizedCard.easeFactor == null) normalizedCard.easeFactor = 2.5;
         if (normalizedCard.reviewCount == null) normalizedCard.reviewCount = 0;
         if (!normalizedCard.nextReview) normalizedCard.nextReview = new Date().toISOString();
+        if (!Array.isArray(normalizedCard.questions)) normalizedCard.questions = [];
 
         return normalizedCard;
     },

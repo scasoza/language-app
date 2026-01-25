@@ -145,52 +145,30 @@ const GeminiService = {
         return response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     },
 
-    // Parse JSON response from Gemini
-    parseJsonResponse(text, errorMessage) {
-        try {
-            const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-            return JSON.parse(cleaned);
-        } catch (e) {
-            console.error('Failed to parse response:', e, text);
-            throw new Error(errorMessage);
+    async answerCardQuestion({ card, question }) {
+        if (!question) {
+            throw new Error('Question is required');
         }
-    },
 
-    // Extract requested card count from text input
-    extractRequestedCardCount(text) {
-        if (!text) return null;
-        const match = text.match(/\b(\d{1,3})\b/);
-        if (!match) return null;
-        const parsed = Number.parseInt(match[1], 10);
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    },
+        const prompt = `You are a helpful language tutor. Answer the learner's question using the flashcard context.
 
-    getBatchSize(remaining) {
-        if (remaining <= this.MIN_BATCH_SIZE) {
-            return remaining;
-        }
-        return Math.min(this.MAX_BATCH_SIZE, remaining);
-    },
+Flashcard context:
+- Front: ${card?.front || 'N/A'}
+- Back: ${card?.back || 'N/A'}
+- Reading: ${card?.reading || 'N/A'}
+- Example: ${card?.example || 'N/A'}
 
-    mergeCards(existingCards, incomingCards, seenFronts) {
-        let added = 0;
-        let duplicates = 0;
+Learner question: ${question}
 
-        incomingCards.forEach((card) => {
-            const frontKey = (card.front || '').trim().toLowerCase();
-            if (!frontKey) {
-                return;
-            }
-            if (seenFronts.has(frontKey)) {
-                duplicates += 1;
-                return;
-            }
-            seenFronts.add(frontKey);
-            existingCards.push(card);
-            added += 1;
+Provide a concise, clear answer. If the question is unrelated to the card, say so and refocus on the card.`;
+
+        const response = await this.callAPI(this.MODELS.FLASH, prompt, {
+            temperature: 0.3,
+            maxTokens: 512,
+            thinkingLevel: this.THINKING_LEVELS.LOW
         });
 
-        return { added, duplicates };
+        return this.extractText(response).trim();
     },
 
     // Extract audio from TTS response and convert PCM to WAV

@@ -172,6 +172,27 @@ const StudyScreen = {
             const frontMarkup = this.renderPinyin(card.front, card.reading);
             const exampleMarkup = card.example ? this.renderPinyin(card.example, card.exampleReading) : '';
             const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
+            const questions = Array.isArray(card.questions) ? card.questions : [];
+            const formatQaText = (text) => this.escapeHtml(text || '').replace(/\n/g, '<br>');
+            const questionsMarkup = questions.length > 0
+                ? questions.map(entry => `
+                        <div class="rounded-xl border border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-black/20 p-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="text-left">
+                                    <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Question</p>
+                                    <p class="text-sm text-slate-700 dark:text-slate-200">${formatQaText(entry.question)}</p>
+                                </div>
+                                <button onclick="event.stopPropagation(); StudyScreen.deleteQuestion('${card.id}', '${entry.id}')" class="mt-1 size-8 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-base">delete</span>
+                                </button>
+                            </div>
+                            <div class="mt-3 text-left">
+                                <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Answer</p>
+                                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">${formatQaText(entry.answer)}</p>
+                            </div>
+                        </div>
+                    `).join('')
+                : `<p class="text-sm text-slate-400 dark:text-slate-500">No questions yet. Ask one to start a study log.</p>`;
 
             container.innerHTML = `
             <div class="relative flex h-screen w-full flex-col overflow-hidden">
@@ -269,6 +290,23 @@ const StudyScreen = {
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
                                         </div>
                                     ` : ''}
+
+                                    <div class="mt-4 w-full">
+                                        <button onclick="event.stopPropagation(); StudyScreen.askQuestion()" class="w-full bg-primary/10 border border-primary/30 text-primary font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-background-dark transition-all">
+                                            <span class="material-symbols-outlined">help</span>
+                                            Ask Question
+                                        </button>
+
+                                        <details class="mt-3 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-surface-dark/60 overflow-hidden" onclick="event.stopPropagation();">
+                                            <summary onclick="event.stopPropagation();" class="cursor-pointer list-none flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                                <span>Q&A History (${questions.length})</span>
+                                                <span class="material-symbols-outlined text-base">expand_more</span>
+                                            </summary>
+                                            <div class="px-4 pb-4 space-y-3">
+                                                ${questionsMarkup}
+                                            </div>
+                                        </details>
+                                    </div>
                                 </div>
                             ` : `
                                 <div class="flex-1 flex items-center justify-center">
@@ -467,6 +505,58 @@ const StudyScreen = {
                 </div>
             `;
         }
+    },
+
+    async askQuestion() {
+        const card = this.cards[this.currentIndex];
+        if (!card) return;
+
+        const question = window.prompt('Ask a question about this card:');
+        if (!question || !question.trim()) return;
+
+        if (!GeminiService.isConfigured()) {
+            app.showToast('Configure your Gemini API key in Settings to ask questions', 'error');
+            return;
+        }
+
+        app.showToast('Asking Gemini...', 'info');
+
+        try {
+            const answer = await GeminiService.answerCardQuestion({
+                card,
+                question: question.trim()
+            });
+            const cleanedAnswer = answer && answer.trim() ? answer.trim() : 'No response received.';
+            const newEntry = {
+                id: `qa_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                question: question.trim(),
+                answer: cleanedAnswer,
+                createdAt: new Date().toISOString()
+            };
+            const existingQuestions = Array.isArray(card.questions) ? card.questions : [];
+            const updatedQuestions = [...existingQuestions, newEntry];
+
+            await DataStore.updateCard(card.id, { questions: updatedQuestions });
+            card.questions = updatedQuestions;
+            this.render();
+            app.showToast('Answer saved to this card', 'success');
+        } catch (error) {
+            console.error('Failed to answer question:', error);
+            app.showToast('Failed to get an answer. Please try again.', 'error');
+        }
+    },
+
+    async deleteQuestion(cardId, questionId) {
+        const card = this.cards.find(current => current.id === cardId) || DataStore.getCard(cardId);
+        if (!card) return;
+
+        const existingQuestions = Array.isArray(card.questions) ? card.questions : [];
+        const updatedQuestions = existingQuestions.filter(entry => entry.id !== questionId);
+
+        await DataStore.updateCard(cardId, { questions: updatedQuestions });
+        card.questions = updatedQuestions;
+        this.render();
+        app.showToast('Q&A entry deleted', 'success');
     },
 
     async flip() {

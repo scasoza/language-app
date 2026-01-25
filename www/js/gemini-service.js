@@ -127,6 +127,32 @@ const GeminiService = {
         return response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     },
 
+    async answerCardQuestion({ card, question }) {
+        if (!question) {
+            throw new Error('Question is required');
+        }
+
+        const prompt = `You are a helpful language tutor. Answer the learner's question using the flashcard context.
+
+Flashcard context:
+- Front: ${card?.front || 'N/A'}
+- Back: ${card?.back || 'N/A'}
+- Reading: ${card?.reading || 'N/A'}
+- Example: ${card?.example || 'N/A'}
+
+Learner question: ${question}
+
+Provide a concise, clear answer. If the question is unrelated to the card, say so and refocus on the card.`;
+
+        const response = await this.callAPI(this.MODELS.FLASH, prompt, {
+            temperature: 0.3,
+            maxTokens: 512,
+            thinkingLevel: this.THINKING_LEVELS.LOW
+        });
+
+        return this.extractText(response).trim();
+    },
+
     // Extract audio from TTS response and convert PCM to WAV
     extractAudio(response) {
         console.log('🔍 extractAudio: parsing API response');
