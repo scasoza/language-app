@@ -5,6 +5,7 @@
 const CollectionDetailScreen = {
     collectionId: null,
     isEditing: false,
+    cardEditCallback: null,
 
     setCollection(id) {
         this.collectionId = id;
@@ -168,8 +169,14 @@ const CollectionDetailScreen = {
     },
 
     editCard(cardId) {
-        const card = DataStore.getCards().find(c => c.id === cardId);
+        this.openCardEditModal(cardId, () => this.render());
+    },
+
+    openCardEditModal(cardId, onSave = null) {
+        const card = DataStore.getCard(cardId);
         if (!card) return;
+
+        this.cardEditCallback = typeof onSave === 'function' ? onSave : null;
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
@@ -198,16 +205,21 @@ const CollectionDetailScreen = {
         `);
     },
 
-    saveCardEdit(cardId) {
+    async saveCardEdit(cardId) {
         const front = document.getElementById('edit-card-front')?.value?.trim();
         const back = document.getElementById('edit-card-back')?.value?.trim();
         const example = document.getElementById('edit-card-example')?.value?.trim();
 
         if (front && back) {
-            DataStore.updateCard(cardId, { front, back, example });
+            const updatedCard = await DataStore.updateCard(cardId, { front, back, example });
             app.closeModal();
             app.showToast('Card updated!', 'success');
-            this.render();
+            if (this.cardEditCallback) {
+                this.cardEditCallback(updatedCard);
+                this.cardEditCallback = null;
+            } else {
+                this.render();
+            }
         }
     },
 

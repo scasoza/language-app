@@ -239,6 +239,18 @@ const StudyScreen = {
                                     <!-- Translation -->
                                     <h3 class="text-3xl font-bold text-primary tracking-tight">${card.back}</h3>
 
+                                    <!-- Card Actions -->
+                                    <div class="flex flex-wrap items-center justify-center gap-3">
+                                        <button onclick="event.stopPropagation(); StudyScreen.editCurrentCard()" class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-surface-dark/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-200 hover:bg-white/10">
+                                            <span class="material-symbols-outlined text-base text-primary">edit</span>
+                                            Edit card
+                                        </button>
+                                        <button onclick="event.stopPropagation(); StudyScreen.deleteCurrentCard()" class="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-red-300 hover:bg-red-500/20">
+                                            <span class="material-symbols-outlined text-base">delete</span>
+                                            Delete card
+                                        </button>
+                                    </div>
+
                                     <!-- Replay pronunciation button on back -->
                                     <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
                                         <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
@@ -713,6 +725,39 @@ const StudyScreen = {
 
     restart() {
         this.init(this.collectionId);
+        this.render();
+    },
+
+    editCurrentCard() {
+        const card = this.cards[this.currentIndex];
+        if (!card) return;
+
+        CollectionDetailScreen.openCardEditModal(card.id, (updatedCard) => {
+            if (updatedCard) {
+                this.cards[this.currentIndex] = updatedCard;
+            }
+            this.render();
+        });
+    },
+
+    async deleteCurrentCard() {
+        const card = this.cards[this.currentIndex];
+        if (!card) return;
+
+        if (!confirm('Delete this card?')) {
+            return;
+        }
+
+        await DataStore.deleteCard(card.id);
+        this.cards.splice(this.currentIndex, 1);
+        this.sessionStats.total = this.cards.length;
+        this.isFlipped = false;
+
+        if (this.currentIndex >= this.cards.length) {
+            this.currentIndex = Math.max(0, this.cards.length - 1);
+        }
+
+        app.showToast('Card deleted', 'success');
         this.render();
     }
 };
