@@ -16,7 +16,7 @@ const app = {
         await SupabaseService.init();
         console.log('✅ Supabase initialized:', SupabaseService.initialized);
 
-        if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
+        if (SupabaseService.initialized && !SupabaseService.isAuthenticated() && !SupabaseService.allowAnonymousAccess()) {
             const cleared = DataStore.clearLocalDataOnce();
             if (cleared) {
                 console.log('🧹 Cleared local storage data for a fresh Supabase login.');
