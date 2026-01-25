@@ -13,16 +13,30 @@ const DataStore = {
     onboarded: false,
     useSupabase: false,
 
+    // Check if we can actually write to Supabase (real auth, not anonymous)
+    canUseSupabase() {
+        return this.useSupabase &&
+               SupabaseService &&
+               SupabaseService.isAuthenticated() &&
+               !SupabaseService.isAnonymous();
+    },
+
     // Initialize - load from Supabase
     async init() {
         console.log('📦 Initializing DataStore...');
 
-        // Check if Supabase is configured AND authenticated
-        this.useSupabase = SupabaseService &&
-                          SupabaseService.initialized &&
-                          SupabaseService.isAuthenticated();
+        // Check if Supabase is configured AND user is REALLY authenticated
+        // Anonymous users (fake local UUIDs) cannot write to Supabase due to RLS policies
+        // that require auth.uid() = user_id - only real auth sessions have auth.uid()
+        const isReallyAuthenticated = SupabaseService &&
+                                      SupabaseService.initialized &&
+                                      SupabaseService.isAuthenticated() &&
+                                      !SupabaseService.isAnonymous();
+
+        this.useSupabase = isReallyAuthenticated;
 
         console.log(`🔍 useSupabase: ${this.useSupabase}`);
+        console.log(`🔍 isAnonymous: ${SupabaseService?.isAnonymous?.() ?? 'N/A'}`);
 
         if (this.useSupabase) {
             console.log('✅ Loading data from Supabase...');
@@ -212,7 +226,7 @@ const DataStore = {
         this.saveToLocalStorage();
 
         // Also save to Supabase if available
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        if (this.canUseSupabase()) {
             try {
                 await SupabaseService.updateProfile(updates);
             } catch (error) {
@@ -245,7 +259,7 @@ const DataStore = {
     async addCollection(collection) {
         let newCollection;
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        if (this.canUseSupabase()) {
             try {
                 newCollection = await SupabaseService.addCollection(collection);
                 this.collections.push(newCollection);
@@ -288,7 +302,7 @@ const DataStore = {
         this.saveToLocalStorage();
 
         // Also save to Supabase if available
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        if (this.canUseSupabase()) {
             try {
                 await SupabaseService.updateCollection(id, updates);
             } catch (error) {
@@ -303,10 +317,16 @@ const DataStore = {
         this.collections = this.collections.filter(c => c.id !== id);
         this.cards = this.cards.filter(c => c.collectionId !== id);
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            await SupabaseService.deleteCollection(id);
-        } else {
-            this.saveToLocalStorage();
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
+
+        // Also delete from Supabase if available
+        if (this.canUseSupabase()) {
+            try {
+                await SupabaseService.deleteCollection(id);
+            } catch (error) {
+                console.error('Failed to delete collection from Supabase:', error);
+            }
         }
     },
 
@@ -345,7 +365,7 @@ const DataStore = {
     async addCard(card) {
         let newCard;
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        if (this.canUseSupabase()) {
             try {
                 newCard = await SupabaseService.addCard(card);
                 this.cards.push(newCard);
@@ -395,7 +415,7 @@ const DataStore = {
         this.saveToLocalStorage();
 
         // Also save to Supabase if available
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
+        if (this.canUseSupabase()) {
             try {
                 await SupabaseService.updateCard(id, updates);
             } catch (error) {
@@ -412,10 +432,16 @@ const DataStore = {
 
         this.cards = this.cards.filter(c => c.id !== id);
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            await SupabaseService.deleteCard(id);
-        } else {
-            this.saveToLocalStorage();
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
+
+        // Also delete from Supabase if available
+        if (this.canUseSupabase()) {
+            try {
+                await SupabaseService.deleteCard(id);
+            } catch (error) {
+                console.error('Failed to delete card from Supabase:', error);
+            }
         }
 
         // Update collection stats
@@ -492,9 +518,20 @@ const DataStore = {
     async addDialogue(dialogue) {
         let newDialogue;
 
-        if (this.useSupabase && SupabaseService.isAuthenticated()) {
-            newDialogue = await SupabaseService.addDialogue(dialogue);
-            this.dialogues.push(newDialogue);
+        if (this.canUseSupabase()) {
+            try {
+                newDialogue = await SupabaseService.addDialogue(dialogue);
+                this.dialogues.push(newDialogue);
+            } catch (error) {
+                console.error('Failed to add dialogue to Supabase:', error);
+                // Fallback to local ID generation
+                newDialogue = {
+                    id: 'dlg_' + Date.now(),
+                    createdAt: new Date().toISOString(),
+                    ...dialogue
+                };
+                this.dialogues.push(newDialogue);
+            }
         } else {
             newDialogue = {
                 id: 'dlg_' + Date.now(),
@@ -502,8 +539,10 @@ const DataStore = {
                 ...dialogue
             };
             this.dialogues.push(newDialogue);
-            this.saveToLocalStorage();
         }
+
+        // Always save to localStorage as backup
+        this.saveToLocalStorage();
 
         return newDialogue;
     },
