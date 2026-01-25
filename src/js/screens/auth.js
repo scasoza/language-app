@@ -40,6 +40,10 @@ const AuthScreen = {
                             <div class="mb-4 rounded-xl border border-white/10 bg-surface-dark px-4 py-3 text-xs text-gray-300">
                                 <p class="font-semibold text-white">Need a developer account?</p>
                                 <p class="mt-1 text-gray-400">Create one here so you can sign in and test Supabase storage.</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-gray-400">
+                                    <li>Disable “Confirm email” in Supabase Auth if you don’t want email confirmation.</li>
+                                    <li>Clear the email domain allowlist or add your domain (ex: gmail.com).</li>
+                                </ul>
                                 <button onclick="AuthScreen.enableDeveloperSignup()" class="mt-3 w-full rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20">
                                     Create a developer account
                                 </button>
@@ -259,6 +263,8 @@ const AuthScreen = {
             const message = error.message || 'Failed to sign in';
             if (message.includes('Email address') && message.includes('invalid')) {
                 this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else if (message.toLowerCase().includes('email not confirmed')) {
+                this.error = 'Your email is not confirmed. Confirm it or disable email confirmations in Supabase Auth settings.';
             } else {
                 this.error = message;
             }
@@ -294,10 +300,13 @@ const AuthScreen = {
         this.render();
 
         try {
-            await SupabaseService.signUp(email, password, name);
-            // Show confirmation message
+            const result = await SupabaseService.signUp(email, password, name);
+            if (result?.session) {
+                await app.handleAuthenticatedSession();
+                return;
+            }
             this.error = null;
-            app.showToast('Check your email to confirm your account!', 'success');
+            app.showToast('Account created. Check your email to confirm, or disable confirmations in Supabase Auth settings.', 'success');
             this.setMode('signin');
         } catch (error) {
             const message = error.message || 'Failed to create account';
@@ -363,6 +372,8 @@ const AuthScreen = {
             const message = error.message || 'Failed to send reset email';
             if (message.includes('Email address') && message.includes('invalid')) {
                 this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else if (message.toLowerCase().includes('email not confirmed')) {
+                this.error = 'Your email is not confirmed. Confirm it or disable email confirmations in Supabase Auth settings.';
             } else {
                 this.error = message;
             }
