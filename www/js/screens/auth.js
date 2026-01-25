@@ -221,12 +221,11 @@ const AuthScreen = {
             }
         }
 
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
         this.isLoading = true;
         this.error = null;
         this.render();
-
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
 
         try {
             await SupabaseService.signIn(email, password);
@@ -257,13 +256,12 @@ const AuthScreen = {
             }
         }
 
-        this.isLoading = true;
-        this.error = null;
-        this.render();
-
         const name = document.getElementById('auth-name').value;
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-password').value;
+        this.isLoading = true;
+        this.error = null;
+        this.render();
 
         try {
             await SupabaseService.signUp(email, password, name);
@@ -317,11 +315,10 @@ const AuthScreen = {
             }
         }
 
+        const email = document.getElementById('auth-email').value;
         this.isLoading = true;
         this.error = null;
         this.render();
-
-        const email = document.getElementById('auth-email').value;
 
         try {
             await SupabaseService.resetPassword(email);
