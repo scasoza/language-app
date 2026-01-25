@@ -758,8 +758,8 @@ Text: "${text}"`;
 
 Current collection: "${collection.name}" (${collection.emoji})
 Current cards: ${existingCards.length} cards
-${existingCards.slice(0, 5).map(c => `- ${c.front} → ${c.back}`).join('\n')}
-${existingCards.length > 5 ? `... and ${existingCards.length - 5} more cards` : ''}
+${existingCards.slice(0, 12).map(c => `- [${c.id}] ${c.front} → ${c.back}${c.example ? ` (example: ${c.example})` : ''}`).join('\n')}
+${existingCards.length > 12 ? `... and ${existingCards.length - 12} more cards` : ''}
 
 ${inputDescription}
 
@@ -768,24 +768,33 @@ IMPORTANT:
 - Otherwise, add 5 new cards by default if adding cards.
 - For modifications, update existing cards as instructed.
 - For deletions, specify which cards to remove.
+- Removals MUST reference card IDs or provide a local filter pattern (keywords).
 
-Provide a response with:
-1. action: "add", "modify", "remove", or "mixed"
-2. cardCount: Number of cards affected (if applicable)
-3. cards: Array of new/modified cards (only if adding or modifying), each with:
-   - front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
-   - If modifying, include: cardId (from existing cards)
-4. removeCardIds: Array of card IDs to remove (only if removing)
-5. collectionUpdates: Object with any collection-level changes (name, emoji, description)
-
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON and follow this strict schema:
 {
-  "action": "add",
-  "cardCount": 5,
-  "cards": [...],
-  "removeCardIds": [],
-  "collectionUpdates": {}
-}`;
+  "collectionUpdates": { "name"?: string, "emoji"?: string, "description"?: string },
+  "operations": [
+    {
+      "action": "add" | "modify" | "remove",
+      "cardId"?: string,
+      "cardIds"?: string[],
+      "match"?: { "keywords": string[], "fields"?: ["front", "example", "back"] },
+      "card"?: {
+        "front": string,
+        "back": string,
+        "reading"?: string,
+        "example"?: string,
+        "exampleTranslation"?: string${isChinese ? ',\n        "exampleReading"?: string' : ''}
+      }
+    }
+  ]
+}
+
+Rules:
+- "add" requires "card" with full fields.
+- "modify" requires "cardId" and any updated fields in "card".
+- "remove" requires "cardId" or "cardIds" or "match".
+- Do NOT return any extra keys.`;
 
         // Build multimodal content array
         const contents = [{ parts: [{ text: prompt }] }];
@@ -820,11 +829,87 @@ Respond ONLY with valid JSON:
 
         try {
             const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
-            return JSON.parse(cleaned);
+            const parsed = JSON.parse(cleaned);
+            return this.validateEditResponse(parsed);
         } catch (e) {
             console.error('Failed to parse AI edit response:', e, text_response);
             throw new Error('Failed to process AI editing. Please try again.');
         }
+    },
+    validateEditResponse(response) {
+        if (!response || typeof response !== 'object' || Array.isArray(response)) {
+            throw new Error('AI response must be a JSON object.');
+        }
+
+        const { operations, collectionUpdates } = response;
+
+        if (!Array.isArray(operations) || operations.length === 0) {
+            throw new Error('AI response must include a non-empty operations array.');
+        }
+
+        if (collectionUpdates && typeof collectionUpdates !== 'object') {
+            throw new Error('collectionUpdates must be an object.');
+        }
+
+        const allowedActions = new Set(['add', 'modify', 'remove']);
+
+        const normalizedOperations = operations.map((operation, index) => {
+            if (!operation || typeof operation !== 'object' || Array.isArray(operation)) {
+                throw new Error(`Operation #${index + 1} must be an object.`);
+            }
+
+            const action = operation.action;
+            if (!allowedActions.has(action)) {
+                throw new Error(`Operation #${index + 1} has an invalid action.`);
+            }
+
+            const { cardId, cardIds, match, card } = operation;
+
+            if (action === 'remove') {
+                const hasCardId = typeof cardId === 'string' && cardId.trim();
+                const hasCardIds = Array.isArray(cardIds) && cardIds.length > 0;
+                const hasMatch = match && Array.isArray(match.keywords) && match.keywords.length > 0;
+
+                if (!hasCardId && !hasCardIds && !hasMatch) {
+                    throw new Error(`Remove operation #${index + 1} must include cardId, cardIds, or match.`);
+                }
+
+                if (hasMatch && match.fields && !Array.isArray(match.fields)) {
+                    throw new Error(`Match fields for operation #${index + 1} must be an array.`);
+                }
+            }
+
+            if (action === 'modify') {
+                if (!cardId || typeof cardId !== 'string') {
+                    throw new Error(`Modify operation #${index + 1} must include cardId.`);
+                }
+                if (card && (typeof card !== 'object' || Array.isArray(card))) {
+                    throw new Error(`Modify operation #${index + 1} has invalid card data.`);
+                }
+            }
+
+            if (action === 'add') {
+                if (!card || typeof card !== 'object' || Array.isArray(card)) {
+                    throw new Error(`Add operation #${index + 1} must include card.`);
+                }
+                if (!card.front || !card.back) {
+                    throw new Error(`Add operation #${index + 1} must include card.front and card.back.`);
+                }
+            }
+
+            return {
+                action,
+                cardId: typeof cardId === 'string' ? cardId : undefined,
+                cardIds: Array.isArray(cardIds) ? cardIds : undefined,
+                match: match && typeof match === 'object' ? match : undefined,
+                card: card && typeof card === 'object' ? card : undefined
+            };
+        });
+
+        return {
+            collectionUpdates: collectionUpdates && typeof collectionUpdates === 'object' ? collectionUpdates : {},
+            operations: normalizedOperations
+        };
     },
 
     /**
