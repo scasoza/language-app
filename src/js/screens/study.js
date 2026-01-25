@@ -132,10 +132,12 @@ const StudyScreen = {
                 const escapedReading = this.escapeHtml(tokens[tokenIndex]);
                 tokenIndex += 1;
                 return `
-                    <ruby class="inline-flex flex-col items-center leading-tight">
-                        <span>${escapedChar}</span>
-                        <rt class="text-xs text-slate-400">${escapedReading}</rt>
-                    </ruby>
+                    <span class="pinyin-ruby">
+                        <ruby>
+                            <span>${escapedChar}</span>
+                            <rt class="pinyin-reading">${escapedReading}</rt>
+                        </ruby>
+                    </span>
                 `;
             }
 
