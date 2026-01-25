@@ -49,6 +49,7 @@ create table if not exists cards (
     example_audio text,
     image text,
     audio text,
+    questions jsonb default '[]'::jsonb,
     difficulty int default 2,
     next_review timestamp with time zone default timezone('utc'::text, now()),
     last_review timestamp with time zone,
