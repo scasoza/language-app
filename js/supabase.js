@@ -361,6 +361,7 @@ const SupabaseService = {
                 example_audio: card.exampleAudio,
                 image: card.image,
                 audio: card.audio,
+                questions: Array.isArray(card.questions) ? card.questions : [],
                 difficulty: card.difficulty ?? 2,
                 interval: card.interval ?? 1,
                 ease_factor: card.easeFactor ?? 2.5,
@@ -520,6 +521,7 @@ const SupabaseService = {
             exampleAudio: data.example_audio,
             image: data.image,
             audio: data.audio,
+            questions: Array.isArray(data.questions) ? data.questions : [],
             difficulty: data.difficulty,
             nextReview: data.next_review,
             lastReview: data.last_review,
@@ -542,6 +544,7 @@ const SupabaseService = {
         if (data.exampleAudio !== undefined) result.example_audio = data.exampleAudio;
         if (data.image !== undefined) result.image = data.image;
         if (data.audio !== undefined) result.audio = data.audio;
+        if (data.questions !== undefined) result.questions = data.questions;
         if (data.difficulty !== undefined) result.difficulty = data.difficulty;
         if (data.nextReview !== undefined) result.next_review = data.nextReview;
         if (data.lastReview !== undefined) result.last_review = data.lastReview;
