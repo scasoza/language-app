@@ -9,6 +9,7 @@ const SupabaseService = {
     initialized: false,
     missingConfig: null,
     initError: null,
+    anonUserKey: 'linguaflow_anon_user_id',
 
     // Initialize Supabase client
     async init() {
@@ -52,6 +53,8 @@ const SupabaseService = {
             const { data: { session } } = await this.client.auth.getSession();
             if (session) {
                 this.user = session.user;
+            } else if (this.allowAnonymousAccess()) {
+                this.user = { id: this.getAnonymousUserId(), isAnonymous: true };
             }
 
             // Listen for auth changes
@@ -60,7 +63,11 @@ const SupabaseService = {
                 if (event === 'SIGNED_IN') {
                     window.dispatchEvent(new CustomEvent('auth:signin', { detail: this.user }));
                 } else if (event === 'SIGNED_OUT') {
-                    window.dispatchEvent(new CustomEvent('auth:signout'));
+                    if (this.allowAnonymousAccess()) {
+                        this.user = { id: this.getAnonymousUserId(), isAnonymous: true };
+                    } else {
+                        window.dispatchEvent(new CustomEvent('auth:signout'));
+                    }
                 }
             });
 
@@ -97,6 +104,19 @@ const SupabaseService = {
     // Check if user is authenticated
     isAuthenticated() {
         return !!this.user;
+    },
+    isAnonymous() {
+        return !!this.user?.isAnonymous;
+    },
+    allowAnonymousAccess() {
+        return window.LINGUAFLOW_ALLOW_ANON_SUPABASE !== false;
+    },
+    getAnonymousUserId() {
+        const existing = localStorage.getItem(this.anonUserKey);
+        if (existing) return existing;
+        const anonId = crypto.randomUUID();
+        localStorage.setItem(this.anonUserKey, anonId);
+        return anonId;
     },
 
     // Get current user ID
@@ -153,7 +173,7 @@ const SupabaseService = {
 
         const { error } = await this.client.auth.signOut();
         if (error) throw error;
-        this.user = null;
+        this.user = this.allowAnonymousAccess() ? { id: this.getAnonymousUserId(), isAnonymous: true } : null;
     },
 
     async resetPassword(email) {
@@ -175,10 +195,12 @@ const SupabaseService = {
             .from('profiles')
             .select('*')
             .eq('id', this.user.id)
-            .single();
+            .maybeSingle();
 
         if (error) {
-            console.error('Error fetching profile:', error);
+            if (error.code !== 'PGRST116') {
+                console.error('Error fetching profile:', error);
+            }
             return null;
         }
         return this.transformProfile(data);
