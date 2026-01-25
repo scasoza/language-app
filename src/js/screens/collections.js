@@ -211,7 +211,7 @@ const CollectionsScreen = {
                     <span class="text-2xl">${emoji}</span>
                     <h3 class="font-bold text-base truncate">${topic}</h3>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Generating with AI...</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400" data-placeholder-message>Generating with AI...</p>
             </div>
         `;
 
@@ -223,6 +223,15 @@ const CollectionsScreen = {
         const placeholder = document.getElementById(id);
         if (placeholder) {
             placeholder.remove();
+        }
+    },
+
+    updatePlaceholderMessage(id, message) {
+        const placeholder = document.getElementById(id);
+        if (!placeholder) return;
+        const messageEl = placeholder.querySelector('[data-placeholder-message]');
+        if (messageEl) {
+            messageEl.textContent = message;
         }
     }
 };
