@@ -10,6 +10,41 @@ const CollectionDetailScreen = {
     setCollection(id) {
         this.collectionId = id;
         this.isEditing = false;
+        this.fabMenuOpen = false;
+    },
+
+    toggleFabMenu() {
+        this.fabMenuOpen = !this.fabMenuOpen;
+        const subOptions = document.getElementById('fab-sub-options');
+        const fabIcon = document.getElementById('fab-icon');
+        const fabBtn = document.getElementById('fab-main-btn');
+
+        if (this.fabMenuOpen) {
+            subOptions.classList.remove('hidden');
+            fabIcon.textContent = 'close';
+            fabBtn.classList.add('rotate-90');
+            // Clicking main FAB when open triggers AI edit
+            fabBtn.onclick = () => {
+                this.closeFabMenu();
+                this.showAIEditModal();
+            };
+        } else {
+            this.closeFabMenu();
+        }
+    },
+
+    closeFabMenu() {
+        this.fabMenuOpen = false;
+        const subOptions = document.getElementById('fab-sub-options');
+        const fabIcon = document.getElementById('fab-icon');
+        const fabBtn = document.getElementById('fab-main-btn');
+
+        if (subOptions) subOptions.classList.add('hidden');
+        if (fabIcon) fabIcon.textContent = 'auto_awesome';
+        if (fabBtn) {
+            fabBtn.classList.remove('rotate-90');
+            fabBtn.onclick = () => this.toggleFabMenu();
+        }
     },
 
     render() {
@@ -117,10 +152,18 @@ const CollectionDetailScreen = {
                     `}
                 </div>
 
-                <!-- FAB for adding cards -->
-                <div class="fixed bottom-24 right-4 z-40">
-                    <button onclick="CollectionDetailScreen.addCard()" class="flex size-14 items-center justify-center rounded-full bg-primary shadow-lg text-background-dark hover:scale-105 transition-transform">
-                        <span class="material-symbols-outlined text-2xl">add</span>
+                <!-- FAB Menu for AI Edit and Add Card -->
+                <div class="fixed bottom-24 right-4 z-40" id="fab-menu-container">
+                    <!-- Sub-options (hidden by default) -->
+                    <div id="fab-sub-options" class="hidden flex flex-col items-end gap-3 mb-3">
+                        <button onclick="CollectionDetailScreen.addCard(); CollectionDetailScreen.closeFabMenu();" class="flex items-center gap-2 bg-surface-dark border border-white/10 text-white px-4 py-2 rounded-full shadow-lg hover:bg-white/10 transition-all animate-in fade-in slide-in-from-bottom-2">
+                            <span class="text-sm font-medium">Add Card</span>
+                            <span class="material-symbols-outlined text-primary">add</span>
+                        </button>
+                    </div>
+                    <!-- Main FAB - AI Edit (most prominent) -->
+                    <button onclick="CollectionDetailScreen.toggleFabMenu()" id="fab-main-btn" class="flex size-14 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 text-background-dark hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-2xl" id="fab-icon">auto_awesome</span>
                     </button>
                 </div>
             </div>
@@ -418,10 +461,10 @@ const CollectionDetailScreen = {
                     <div>
                         <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What would you like to change?</label>
                         <textarea id="ai-edit-instructions" rows="4" placeholder="Examples:
-• Add 20 more cards about Spanish restaurant vocabulary
-• Remove all cards related to greetings
-• Add cards for the words in this image
-• Create 10 cards based on this audio" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+• Add 10 cards about food vocabulary
+• Remove cards about greetings
+• Delete cards with 'hello' and add 5 new travel phrases
+• Edit the card for 'apple' to include a better example" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
                         <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
                         <p class="text-xs text-slate-500 mt-1">💡 Use text, audio, images, or any combination. Specify card count if needed!</p>
                     </div>

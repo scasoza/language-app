@@ -282,9 +282,14 @@ const StudyScreen = {
                                         <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5">
                                             <div class="flex items-center justify-between mb-2">
                                                 <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold text-left">Example</p>
-                                                <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
-                                                    <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
-                                                </button>
+                                                <div class="flex items-center gap-2">
+                                                    <button onclick="event.stopPropagation(); StudyScreen.explainExample()" class="size-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Explain sentence">
+                                                        <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark text-base">school</span>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                                        <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${exampleMarkup}</p>
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
@@ -504,6 +509,52 @@ const StudyScreen = {
                     </button>
                 </div>
             `;
+        }
+    },
+
+    async explainExample() {
+        const card = this.cards[this.currentIndex];
+        if (!card || !card.example) return;
+
+        if (!GeminiService.isConfigured()) {
+            app.showToast('Configure your Gemini API key in Settings', 'error');
+            return;
+        }
+
+        app.showToast('Analyzing sentence...', 'info');
+
+        try {
+            const user = DataStore.getUser();
+            const explanation = await GeminiService.explainSentence({
+                sentence: card.example,
+                translation: card.exampleTranslation,
+                targetLanguage: user.targetLanguage,
+                nativeLanguage: user.nativeLanguage
+            });
+
+            app.showModal(`
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-500">school</span>
+                        Sentence Breakdown
+                    </h3>
+                    <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="space-y-4 max-h-[60vh] overflow-y-auto">
+                    <div class="p-3 rounded-xl bg-surface-dark/50 border border-white/5">
+                        <p class="text-lg font-medium text-white">${card.example}</p>
+                        ${card.exampleTranslation ? `<p class="text-sm text-slate-400 mt-1">${card.exampleTranslation}</p>` : ''}
+                    </div>
+                    <div class="prose prose-invert prose-sm max-w-none">
+                        ${explanation.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `);
+        } catch (error) {
+            console.error('Failed to explain sentence:', error);
+            app.showToast('Failed to get explanation. Please try again.', 'error');
         }
     },
 
