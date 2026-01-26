@@ -1,29 +1,24 @@
--- Supabase Schema for LinguaFlow
+-- Supabase Schema for LinguaFlow (Single-User Mode - No Auth Required)
 -- Run this in the Supabase SQL Editor
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
--- Users profile table (extends Supabase auth.users)
-create table if not exists profiles (
-    id uuid references auth.users on delete cascade primary key,
-    name text,
-    level int default 1,
-    target_language text default 'Spanish',
-    native_language text default 'English',
-    streak int default 0,
-    total_cards_learned int default 0,
-    daily_goal int default 20,
-    settings jsonb default '{"audioAutoplay": false, "hapticFeedback": true, "darkMode": true, "reminderTime": "20:00", "streakFreezeAlerts": true}'::jsonb,
-    onboarded boolean default false,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- Fixed user ID for single-user mode
+-- This matches SINGLE_USER_ID in supabase.js
+-- DO NOT CHANGE unless you also update the JS code
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'single_user_id') THEN
+        CREATE DOMAIN single_user_id AS uuid DEFAULT '00000000-0000-0000-0000-000000000001'::uuid;
+    END IF;
+END
+$$;
 
--- Collections table
+-- Collections table (no foreign key to profiles)
 create table if not exists collections (
     id uuid default uuid_generate_v4() primary key,
-    user_id uuid references profiles(id) on delete cascade not null,
+    user_id uuid default '00000000-0000-0000-0000-000000000001'::uuid not null,
     name text not null,
     emoji text default '📚',
     image text,
@@ -38,7 +33,7 @@ create table if not exists collections (
 -- Cards table
 create table if not exists cards (
     id uuid default uuid_generate_v4() primary key,
-    user_id uuid references profiles(id) on delete cascade not null,
+    user_id uuid default '00000000-0000-0000-0000-000000000001'::uuid not null,
     collection_id uuid references collections(id) on delete cascade not null,
     front text not null,
     back text not null,
@@ -63,7 +58,7 @@ create table if not exists cards (
 -- Dialogues table
 create table if not exists dialogues (
     id uuid default uuid_generate_v4() primary key,
-    user_id uuid references profiles(id) on delete cascade not null,
+    user_id uuid default '00000000-0000-0000-0000-000000000001'::uuid not null,
     title text not null,
     setting text,
     duration int,
@@ -74,62 +69,18 @@ create table if not exists dialogues (
 -- Study sessions table (for tracking daily activity)
 create table if not exists study_sessions (
     id uuid default uuid_generate_v4() primary key,
-    user_id uuid references profiles(id) on delete cascade not null,
+    user_id uuid default '00000000-0000-0000-0000-000000000001'::uuid not null,
     cards_studied int default 0,
     time_spent int default 0, -- in seconds
     date date default current_date,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Row Level Security (RLS) policies
-alter table profiles enable row level security;
-alter table collections enable row level security;
-alter table cards enable row level security;
-alter table dialogues enable row level security;
-alter table study_sessions enable row level security;
-
--- Profiles: users can only see/edit their own profile
-create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
-create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
-create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
-
--- Collections: users can only see/edit their own collections
-create policy "Users can view own collections" on collections for select using (auth.uid() = user_id);
-create policy "Users can insert own collections" on collections for insert with check (auth.uid() = user_id);
-create policy "Users can update own collections" on collections for update using (auth.uid() = user_id);
-create policy "Users can delete own collections" on collections for delete using (auth.uid() = user_id);
-
--- Cards: users can only see/edit their own cards
-create policy "Users can view own cards" on cards for select using (auth.uid() = user_id);
-create policy "Users can insert own cards" on cards for insert with check (auth.uid() = user_id);
-create policy "Users can update own cards" on cards for update using (auth.uid() = user_id);
-create policy "Users can delete own cards" on cards for delete using (auth.uid() = user_id);
-
--- Dialogues: users can only see/edit their own dialogues
-create policy "Users can view own dialogues" on dialogues for select using (auth.uid() = user_id);
-create policy "Users can insert own dialogues" on dialogues for insert with check (auth.uid() = user_id);
-create policy "Users can delete own dialogues" on dialogues for delete using (auth.uid() = user_id);
-
--- Study sessions: users can only see/edit their own sessions
-create policy "Users can view own sessions" on study_sessions for select using (auth.uid() = user_id);
-create policy "Users can insert own sessions" on study_sessions for insert with check (auth.uid() = user_id);
-create policy "Users can update own sessions" on study_sessions for update using (auth.uid() = user_id);
-
--- Function to create profile on signup
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-    insert into public.profiles (id, name)
-    values (new.id, new.raw_user_meta_data->>'name');
-    return new;
-end;
-$$ language plpgsql security definer;
-
--- Trigger to create profile on signup
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-    after insert on auth.users
-    for each row execute procedure public.handle_new_user();
+-- Row Level Security (RLS) - DISABLED for single-user mode
+alter table collections disable row level security;
+alter table cards disable row level security;
+alter table dialogues disable row level security;
+alter table study_sessions disable row level security;
 
 -- Function to update card counts in collections
 create or replace function update_collection_card_count()
