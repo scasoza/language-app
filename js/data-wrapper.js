@@ -13,30 +13,19 @@ const DataStore = {
     onboarded: false,
     useSupabase: false,
 
-    // Check if we can actually write to Supabase (real auth, not anonymous)
+    // Check if Supabase is available (no auth required)
     canUseSupabase() {
-        return this.useSupabase &&
-               SupabaseService &&
-               SupabaseService.isAuthenticated() &&
-               !SupabaseService.isAnonymous();
+        return this.useSupabase && SupabaseService && SupabaseService.initialized;
     },
 
     // Initialize - load from Supabase
     async init() {
         console.log('📦 Initializing DataStore...');
 
-        // Check if Supabase is configured AND user is REALLY authenticated
-        // Anonymous users (fake local UUIDs) cannot write to Supabase due to RLS policies
-        // that require auth.uid() = user_id - only real auth sessions have auth.uid()
-        const isReallyAuthenticated = SupabaseService &&
-                                      SupabaseService.initialized &&
-                                      SupabaseService.isAuthenticated() &&
-                                      !SupabaseService.isAnonymous();
-
-        this.useSupabase = isReallyAuthenticated;
+        // Use Supabase if it's initialized (no auth required)
+        this.useSupabase = SupabaseService && SupabaseService.initialized;
 
         console.log(`🔍 useSupabase: ${this.useSupabase}`);
-        console.log(`🔍 isAnonymous: ${SupabaseService?.isAnonymous?.() ?? 'N/A'}`);
 
         if (this.useSupabase) {
             console.log('✅ Loading data from Supabase...');

@@ -5,11 +5,11 @@
 
 const SupabaseService = {
     client: null,
-    user: null,
     initialized: false,
     missingConfig: null,
     initError: null,
-    anonUserKey: 'linguaflow_anon_user_id',
+    // Fixed user ID for single-user mode (no auth required)
+    SINGLE_USER_ID: '00000000-0000-0000-0000-000000000001',
 
     // Initialize Supabase client
     async init() {
@@ -31,12 +31,6 @@ const SupabaseService = {
             console.warn('Supabase not configured, using localStorage fallback');
             this.missingConfig = { missingUrl, missingKey, message };
 
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('supabase:missing-config', {
-                    detail: { missingUrl, missingKey, message }
-                }));
-            }
-
             this.initialized = false;
             return false;
         }
@@ -48,40 +42,13 @@ const SupabaseService = {
             }
 
             this.client = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-            // Check for existing session
-            const { data: { session } } = await this.client.auth.getSession();
-            if (session) {
-                this.user = session.user;
-            } else if (this.allowAnonymousAccess()) {
-                this.user = { id: this.getAnonymousUserId(), isAnonymous: true };
-            }
-
-            // Listen for auth changes
-            this.client.auth.onAuthStateChange((event, session) => {
-                this.user = session?.user || null;
-                if (event === 'SIGNED_IN') {
-                    window.dispatchEvent(new CustomEvent('auth:signin', { detail: this.user }));
-                } else if (event === 'SIGNED_OUT') {
-                    if (this.allowAnonymousAccess()) {
-                        this.user = { id: this.getAnonymousUserId(), isAnonymous: true };
-                    } else {
-                        window.dispatchEvent(new CustomEvent('auth:signout'));
-                    }
-                }
-            });
-
             this.initialized = true;
+            console.log('✅ Supabase initialized (single-user mode, no auth)');
             return true;
         } catch (error) {
             console.error('Failed to initialize Supabase:', error);
             this.initialized = false;
             this.initError = error;
-
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('supabase:init-failed', { detail: { error } }));
-            }
-
             return false;
         }
     },
@@ -226,12 +193,12 @@ const SupabaseService = {
     // ==================== COLLECTIONS METHODS ====================
 
     async getCollections() {
-        if (!this.client || !this.user) return [];
+        if (!this.client) return [];
 
         const { data, error } = await this.client
             .from('collections')
             .select('*')
-            .eq('user_id', this.user.id)
+            .eq('user_id', this.SINGLE_USER_ID)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -242,13 +209,12 @@ const SupabaseService = {
     },
 
     async getCollection(id) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const { data, error } = await this.client
             .from('collections')
             .select('*')
             .eq('id', id)
-            .eq('user_id', this.user.id)
             .single();
 
         if (error) return null;
@@ -256,12 +222,12 @@ const SupabaseService = {
     },
 
     async addCollection(collection) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const { data, error } = await this.client
             .from('collections')
             .insert({
-                user_id: this.user.id,
+                user_id: this.SINGLE_USER_ID,
                 name: collection.name,
                 emoji: collection.emoji || '📚',
                 image: collection.image,
@@ -277,7 +243,7 @@ const SupabaseService = {
     },
 
     async updateCollection(id, updates) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const dbUpdates = this.transformCollectionForDB(updates);
         dbUpdates.updated_at = new Date().toISOString();
@@ -286,7 +252,6 @@ const SupabaseService = {
             .from('collections')
             .update(dbUpdates)
             .eq('id', id)
-            .eq('user_id', this.user.id)
             .select()
             .single();
 
@@ -295,13 +260,12 @@ const SupabaseService = {
     },
 
     async deleteCollection(id) {
-        if (!this.client || !this.user) return false;
+        if (!this.client) return false;
 
         const { error } = await this.client
             .from('collections')
             .delete()
-            .eq('id', id)
-            .eq('user_id', this.user.id);
+            .eq('id', id);
 
         if (error) throw error;
         return true;
@@ -310,12 +274,12 @@ const SupabaseService = {
     // ==================== CARDS METHODS ====================
 
     async getCards(collectionId = null) {
-        if (!this.client || !this.user) return [];
+        if (!this.client) return [];
 
         let query = this.client
             .from('cards')
             .select('*')
-            .eq('user_id', this.user.id);
+            .eq('user_id', this.SINGLE_USER_ID);
 
         if (collectionId) {
             query = query.eq('collection_id', collectionId);
@@ -331,13 +295,12 @@ const SupabaseService = {
     },
 
     async getCard(id) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const { data, error } = await this.client
             .from('cards')
             .select('*')
             .eq('id', id)
-            .eq('user_id', this.user.id)
             .single();
 
         if (error) return null;
@@ -345,12 +308,12 @@ const SupabaseService = {
     },
 
     async getDueCards(collectionId = null) {
-        if (!this.client || !this.user) return [];
+        if (!this.client) return [];
 
         let query = this.client
             .from('cards')
             .select('*')
-            .eq('user_id', this.user.id)
+            .eq('user_id', this.SINGLE_USER_ID)
             .lte('next_review', new Date().toISOString());
 
         if (collectionId) {
@@ -367,12 +330,12 @@ const SupabaseService = {
     },
 
     async addCard(card) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const { data, error } = await this.client
             .from('cards')
             .insert({
-                user_id: this.user.id,
+                user_id: this.SINGLE_USER_ID,
                 collection_id: card.collectionId,
                 front: card.front,
                 back: card.back,
@@ -399,7 +362,7 @@ const SupabaseService = {
     },
 
     async updateCard(id, updates) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const dbUpdates = this.transformCardForDB(updates);
         dbUpdates.updated_at = new Date().toISOString();
@@ -408,7 +371,6 @@ const SupabaseService = {
             .from('cards')
             .update(dbUpdates)
             .eq('id', id)
-            .eq('user_id', this.user.id)
             .select()
             .single();
 
@@ -417,13 +379,12 @@ const SupabaseService = {
     },
 
     async deleteCard(id) {
-        if (!this.client || !this.user) return false;
+        if (!this.client) return false;
 
         const { error } = await this.client
             .from('cards')
             .delete()
-            .eq('id', id)
-            .eq('user_id', this.user.id);
+            .eq('id', id);
 
         if (error) throw error;
         return true;
@@ -432,12 +393,12 @@ const SupabaseService = {
     // ==================== DIALOGUES METHODS ====================
 
     async getDialogues() {
-        if (!this.client || !this.user) return [];
+        if (!this.client) return [];
 
         const { data, error } = await this.client
             .from('dialogues')
             .select('*')
-            .eq('user_id', this.user.id)
+            .eq('user_id', this.SINGLE_USER_ID)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -448,12 +409,12 @@ const SupabaseService = {
     },
 
     async addDialogue(dialogue) {
-        if (!this.client || !this.user) return null;
+        if (!this.client) return null;
 
         const { data, error } = await this.client
             .from('dialogues')
             .insert({
-                user_id: this.user.id,
+                user_id: this.SINGLE_USER_ID,
                 title: dialogue.title,
                 setting: dialogue.setting,
                 duration: dialogue.duration,
