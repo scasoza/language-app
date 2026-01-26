@@ -171,6 +171,41 @@ Provide a concise, clear answer. If the question is unrelated to the card, say s
         return this.extractText(response).trim();
     },
 
+    async explainSentence({ sentence, translation, targetLanguage, nativeLanguage }) {
+        if (!sentence) {
+            throw new Error('Sentence is required');
+        }
+
+        const prompt = `You are a language tutor helping a ${nativeLanguage} speaker learn ${targetLanguage}. Analyze this sentence and provide a clear breakdown.
+
+Sentence: ${sentence}
+${translation ? `Translation: ${translation}` : ''}
+
+Provide a concise breakdown with these sections:
+
+**Literal Translation:**
+Word-by-word translation showing what each part means literally.
+
+**Word Order:**
+Brief explanation of the sentence structure and how it differs from ${nativeLanguage} (if applicable).
+
+**Key Words & Particles:**
+For each important word/particle/grammar construct:
+- The word/particle
+- Its role in this sentence
+- How it's commonly used
+
+Keep explanations simple and practical. Focus on what a learner needs to understand this sentence.`;
+
+        const response = await this.callAPI(this.MODELS.FLASH, prompt, {
+            temperature: 0.3,
+            maxTokens: 800,
+            thinkingLevel: this.THINKING_LEVELS.LOW
+        });
+
+        return this.extractText(response).trim();
+    },
+
     // Extract audio from TTS response and convert PCM to WAV
     extractAudio(response) {
         console.log('🔍 extractAudio: parsing API response');
@@ -967,11 +1002,14 @@ ${existingCards.length > 12 ? `... and ${existingCards.length - 12} more cards` 
 ${inputDescription}
 
 IMPORTANT:
-- If the user specifies how many cards to add/create in their input, use that number.
-- Otherwise, add 5 new cards by default if adding cards.
-- For modifications, update existing cards as instructed.
-- For deletions, specify which cards to remove.
-- Removals MUST reference card IDs or provide a local filter pattern (keywords).
+- You can combine ANY mix of add, modify, and remove operations in a single response.
+- If user asks to add cards, use the specified count or default to 5.
+- If user asks to delete/remove cards, use "remove" action with either:
+  - "cardId": specific ID from the list above
+  - "cardIds": array of IDs to remove
+  - "match": { "keywords": ["word1", "word2"], "fields": ["front", "back", "example"] } to match cards containing those keywords
+- If user asks to modify/edit existing cards, use "modify" with the cardId and updated fields.
+- You MAY include multiple operations of different types (e.g., remove some cards AND add new ones).
 
 Respond ONLY with valid JSON and follow this strict schema:
 {

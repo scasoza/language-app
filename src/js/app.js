@@ -138,11 +138,8 @@ const app = {
         const user = DataStore.getUser();
         this.applyUserSettings(user);
 
-        if (DataStore.isOnboarded()) {
-            this.navigate('home');
-        } else {
-            this.navigate('onboarding');
-        }
+        // Always go to home (skip onboarding for single-user mode)
+        this.navigate('home');
     },
 
     applyUserSettings(user) {
