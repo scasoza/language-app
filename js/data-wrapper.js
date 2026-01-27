@@ -69,11 +69,9 @@ const DataStore = {
 
     async loadFromSupabase() {
         try {
-            // Load user profile
-            this.user = await SupabaseService.getProfile();
-            if (this.user) {
-                this.onboarded = this.user.onboarded;
-            }
+            // Single-user mode: load user settings from localStorage (no profiles table)
+            this.onboarded = localStorage.getItem('linguaflow_onboarded') === 'true';
+            this.user = JSON.parse(localStorage.getItem('linguaflow_user') || 'null');
 
             // Load collections
             this.collections = await SupabaseService.getCollections();
@@ -211,11 +209,8 @@ const DataStore = {
     async updateUser(updates) {
         this.user = { ...this.user, ...updates };
 
-        if (this.canUseSupabase()) {
-            await SupabaseService.updateProfile(updates);
-        } else {
-            this.saveToLocalStorage();
-        }
+        // Always save to localStorage (single-user mode uses localStorage for user settings)
+        this.saveToLocalStorage();
 
         return this.user;
     },
