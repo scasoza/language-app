@@ -10,22 +10,12 @@ const app = {
     async init() {
         console.log('🚀 Initializing LinguaFlow...');
         this.registerSupabaseWarnings();
-        this.registerAuthEvents();
 
         // Initialize Supabase
         await SupabaseService.init();
         console.log('✅ Supabase initialized:', SupabaseService.initialized);
 
-        if (SupabaseService.initialized && !SupabaseService.isAuthenticated() && !SupabaseService.allowAnonymousAccess()) {
-            const cleared = DataStore.clearLocalDataOnce();
-            if (cleared) {
-                console.log('🧹 Cleared local storage data for a fresh Supabase login.');
-            }
-            this.navigate('auth');
-            console.log('✅ App initialized');
-            return;
-        }
-
+        // Single-user mode - go straight to loading data
         await this.handleAuthenticatedSession();
         console.log('✅ App initialized');
     },
@@ -143,16 +133,11 @@ const app = {
     },
 
     applyUserSettings(user) {
-        if (user && user.geminiApiKey) {
-            console.log('📝 Loading API key from user profile');
-            GeminiService.API_KEY = user.geminiApiKey;
-            localStorage.setItem('gemini_api_key', user.geminiApiKey);
-        } else {
-            const apiKey = localStorage.getItem('gemini_api_key');
-            if (apiKey) {
-                console.log('📝 Loading API key from localStorage');
-                GeminiService.API_KEY = apiKey;
-            }
+        // Load API key from localStorage (single-user mode)
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (apiKey) {
+            console.log('📝 Loading API key from localStorage');
+            GeminiService.API_KEY = apiKey;
         }
 
         if (user) {
