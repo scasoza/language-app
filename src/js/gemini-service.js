@@ -48,36 +48,16 @@ const GeminiService = {
         }
     },
 
-    // Set API key
+    // Set API key (localStorage only for single-user mode)
     async setApiKey(key) {
         this.API_KEY = key;
         localStorage.setItem('gemini_api_key', key);
-
-        // Also save to user profile for persistence across sessions
-        if (typeof DataStore !== 'undefined' && DataStore.updateUser) {
-            try {
-                await DataStore.updateUser({ geminiApiKey: key });
-            } catch (error) {
-                console.error('Failed to save API key to user profile:', error);
-            }
-        }
+        console.log('✅ API key saved to localStorage');
     },
 
-    // Get API key from storage
+    // Get API key from localStorage
     getApiKey() {
         if (!this.API_KEY) {
-            // Try to get from user profile first (more persistent)
-            if (typeof DataStore !== 'undefined' && DataStore.getUser) {
-                const user = DataStore.getUser();
-                if (user && user.geminiApiKey) {
-                    this.API_KEY = user.geminiApiKey;
-                    // Also update localStorage for offline access
-                    localStorage.setItem('gemini_api_key', user.geminiApiKey);
-                    return this.API_KEY;
-                }
-            }
-
-            // Fallback to localStorage
             this.API_KEY = localStorage.getItem('gemini_api_key') || '';
         }
         return this.API_KEY;
