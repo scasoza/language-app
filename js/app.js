@@ -220,7 +220,7 @@ const app = {
                             <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
                                 <span class="material-symbols-outlined text-primary text-xl">image</span>
                             </button>
-                            <input type="file" id="ai-image-input" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)" />
+                            <input type="file" id="ai-image-input" accept="image/*" multiple class="hidden" onchange="app.handleImageUpload(event)" />
                         </div>
                     </div>
                     <div>
@@ -256,16 +256,17 @@ const app = {
         if (withAI) {
             // Get multimodal inputs
             const audioData = this.recordedAudioData;
-            const imageData = this.uploadedImageData;
+            const imagesData = this.uploadedImagesData || [];
+            const hasImages = imagesData.length > 0;
 
             // Validate inputs - images cannot be used alone
-            if (imageData && !audioData && !topic) {
+            if (hasImages && !audioData && !topic) {
                 this.showToast('Images cannot be used alone. Please provide text or audio.', 'error');
                 return;
             }
 
             // At least one input is required
-            if (!topic && !audioData && !imageData) {
+            if (!topic && !audioData && !hasImages) {
                 this.showToast('Please provide text, audio, or images to generate cards', 'error');
                 return;
             }
@@ -287,12 +288,12 @@ const app = {
                 const user = DataStore.getUser();
                 this.showToast('Generating with AI...', 'info');
 
-                // Use multimodal API if audio or image is provided
+                // Use multimodal API if audio or images are provided
                 const result = await GeminiService.generateCollectionMultimodal({
                     topic: name || topic,
                     text: topic,
                     audio: audioData,
-                    image: imageData,
+                    images: imagesData,
                     targetLanguage: user.targetLanguage,
                     nativeLanguage: user.nativeLanguage,
                     cardCount: 10  // Default, but AI will extract from audio/text if specified
@@ -300,7 +301,7 @@ const app = {
 
                 // Clear multimodal data after use
                 this.recordedAudioData = null;
-                this.uploadedImageData = null;
+                this.uploadedImagesData = null;
 
                 console.log('Generated collection:', result);
 
@@ -638,21 +639,39 @@ const app = {
 
     // Image upload handler
     handleImageUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = Array.from(event.target.files);
+        if (!files.length) return;
 
-        if (!file.type.startsWith('image/')) {
-            this.showToast('Please select an image file', 'error');
+        // Initialize array if needed
+        if (!this.uploadedImagesData) {
+            this.uploadedImagesData = [];
+        }
+
+        let processedCount = 0;
+        const validFiles = files.filter(file => file.type.startsWith('image/'));
+
+        if (validFiles.length !== files.length) {
+            this.showToast('Some files were not images and were skipped', 'warning');
+        }
+
+        if (validFiles.length === 0) {
+            this.showToast('Please select image files', 'error');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            this.uploadedImageData = reader.result; // base64 data URL
-            this.updateMultimodalPreview();
-            this.showToast('Image uploaded!', 'success');
-        };
-        reader.readAsDataURL(file);
+        validFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                this.uploadedImagesData.push(reader.result); // base64 data URL
+                processedCount++;
+
+                if (processedCount === validFiles.length) {
+                    this.updateMultimodalPreview();
+                    this.showToast(`${validFiles.length} image${validFiles.length > 1 ? 's' : ''} uploaded!`, 'success');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
     },
 
     // Update multimodal preview in the modal
@@ -674,16 +693,17 @@ const app = {
             `;
         }
 
-        if (this.uploadedImageData) {
-            previewHTML += `
-                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
-                    <span class="material-symbols-outlined text-primary text-sm">image</span>
-                    <span class="text-xs font-medium">Image uploaded</span>
-                    <button onclick="app.removeImage()" class="ml-2 text-gray-400 hover:text-red-500">
-                        <span class="material-symbols-outlined text-sm">close</span>
-                    </button>
-                </div>
-            `;
+        if (this.uploadedImagesData && this.uploadedImagesData.length > 0) {
+            this.uploadedImagesData.forEach((imgData, index) => {
+                previewHTML += `
+                    <div class="relative group">
+                        <img src="${imgData}" class="w-12 h-12 object-cover rounded-lg border border-primary/30" />
+                        <button onclick="app.removeImage(${index})" class="absolute -top-1 -right-1 size-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span class="material-symbols-outlined text-xs">close</span>
+                        </button>
+                    </div>
+                `;
+            });
         }
 
         previewContainer.innerHTML = previewHTML;
@@ -695,11 +715,15 @@ const app = {
         this.showToast('Audio removed', 'info');
     },
 
-    removeImage() {
-        this.uploadedImageData = null;
-        document.getElementById('ai-image-input').value = '';
-        this.updateMultimodalPreview();
-        this.showToast('Image removed', 'info');
+    removeImage(index) {
+        if (this.uploadedImagesData && this.uploadedImagesData.length > index) {
+            this.uploadedImagesData.splice(index, 1);
+            if (this.uploadedImagesData.length === 0) {
+                document.getElementById('ai-image-input').value = '';
+            }
+            this.updateMultimodalPreview();
+            this.showToast('Image removed', 'info');
+        }
     },
 
     isProduction() {

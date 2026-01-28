@@ -379,7 +379,7 @@ const CollectionDetailScreen = {
                             <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
                                 <span class="material-symbols-outlined text-primary text-xl">image</span>
                             </button>
-                            <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
+                            <input type="file" id="ai-edit-image-input" accept="image/*" multiple class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
                         </div>
                     </div>
                     <div>
@@ -403,7 +403,7 @@ const CollectionDetailScreen = {
 
         // Initialize temporary storage for this modal
         this.editAudioData = null;
-        this.editImageData = null;
+        this.editImagesData = [];
     },
 
     async toggleEditAudioRecording() {
@@ -473,21 +473,39 @@ const CollectionDetailScreen = {
     },
 
     handleEditImageUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = Array.from(event.target.files);
+        if (!files.length) return;
 
-        if (!file.type.startsWith('image/')) {
-            app.showToast('Please select an image file', 'error');
+        // Initialize array if needed
+        if (!this.editImagesData) {
+            this.editImagesData = [];
+        }
+
+        let processedCount = 0;
+        const validFiles = files.filter(file => file.type.startsWith('image/'));
+
+        if (validFiles.length !== files.length) {
+            app.showToast('Some files were not images and were skipped', 'warning');
+        }
+
+        if (validFiles.length === 0) {
+            app.showToast('Please select image files', 'error');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            this.editImageData = reader.result;
-            this.updateEditPreview();
-            app.showToast('Image uploaded!', 'success');
-        };
-        reader.readAsDataURL(file);
+        validFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                this.editImagesData.push(reader.result);
+                processedCount++;
+
+                if (processedCount === validFiles.length) {
+                    this.updateEditPreview();
+                    app.showToast(`${validFiles.length} image${validFiles.length > 1 ? 's' : ''} uploaded!`, 'success');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
     },
 
     updateEditPreview() {
@@ -508,16 +526,17 @@ const CollectionDetailScreen = {
             `;
         }
 
-        if (this.editImageData) {
-            previewHTML += `
-                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border border-primary/30">
-                    <span class="material-symbols-outlined text-primary text-sm">image</span>
-                    <span class="text-xs font-medium">Image uploaded</span>
-                    <button onclick="CollectionDetailScreen.removeEditImage()" class="ml-2 text-gray-400 hover:text-red-500">
-                        <span class="material-symbols-outlined text-sm">close</span>
-                    </button>
-                </div>
-            `;
+        if (this.editImagesData && this.editImagesData.length > 0) {
+            this.editImagesData.forEach((imgData, index) => {
+                previewHTML += `
+                    <div class="relative group">
+                        <img src="${imgData}" class="w-12 h-12 object-cover rounded-lg border border-primary/30" />
+                        <button onclick="CollectionDetailScreen.removeEditImage(${index})" class="absolute -top-1 -right-1 size-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span class="material-symbols-outlined text-xs">close</span>
+                        </button>
+                    </div>
+                `;
+            });
         }
 
         previewContainer.innerHTML = previewHTML;
@@ -529,25 +548,30 @@ const CollectionDetailScreen = {
         app.showToast('Audio removed', 'info');
     },
 
-    removeEditImage() {
-        this.editImageData = null;
-        document.getElementById('ai-edit-image-input').value = '';
-        this.updateEditPreview();
-        app.showToast('Image removed', 'info');
+    removeEditImage(index) {
+        if (this.editImagesData && this.editImagesData.length > index) {
+            this.editImagesData.splice(index, 1);
+            if (this.editImagesData.length === 0) {
+                document.getElementById('ai-edit-image-input').value = '';
+            }
+            this.updateEditPreview();
+            app.showToast('Image removed', 'info');
+        }
     },
 
     async processAIEdit() {
         const instructions = document.getElementById('ai-edit-instructions')?.value?.trim();
         const audioData = this.editAudioData;
-        const imageData = this.editImageData;
+        const imagesData = this.editImagesData || [];
+        const hasImages = imagesData.length > 0;
 
         // Validate inputs
-        if (imageData && !audioData && !instructions) {
+        if (hasImages && !audioData && !instructions) {
             app.showToast('Images cannot be used alone. Please provide text or audio.', 'error');
             return;
         }
 
-        if (!instructions && !audioData && !imageData) {
+        if (!instructions && !audioData && !hasImages) {
             app.showToast('Please provide instructions, audio, or images', 'error');
             return;
         }
@@ -567,7 +591,7 @@ const CollectionDetailScreen = {
                 collectionId: this.collectionId,
                 instructions,
                 audio: audioData,
-                image: imageData,
+                images: imagesData,
                 text: instructions,
                 targetLanguage: user.targetLanguage,
                 nativeLanguage: user.nativeLanguage

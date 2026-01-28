@@ -334,10 +334,11 @@ Example format:
      * @returns {Promise<Object>} - Collection metadata and cards
      */
     async generateCollectionMultimodal(input) {
-        const { topic, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount } = input;
+        const { topic, audio, images = [], text, targetLanguage = 'Spanish', nativeLanguage = 'English', cardCount } = input;
+        const hasImages = images && images.length > 0;
 
         // Validate inputs - images cannot be used alone
-        if (image && !audio && !text && !topic) {
+        if (hasImages && !audio && !text && !topic) {
             throw new Error('Images cannot be used alone. Please provide text or audio along with images.');
         }
 
@@ -349,7 +350,7 @@ Example format:
         if (topic) inputDescription += `Topic: "${topic}"\n`;
         if (text) inputDescription += `User input: "${text}"\n`;
         if (audio) inputDescription += 'Audio input provided.\n';
-        if (image) inputDescription += 'Image provided for context.\n';
+        if (hasImages) inputDescription += `${images.length} image${images.length > 1 ? 's' : ''} provided for context.\n`;
 
         const prompt = `You are a language learning expert. Create a flashcard collection for learning ${targetLanguage}.
 
@@ -403,13 +404,18 @@ Format:
             });
         }
 
-        // Add image if provided
-        if (image) {
-            contents[0].parts.push({
-                inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: image.replace(/^data:image\/\w+;base64,/, '')
-                }
+        // Add images if provided
+        if (hasImages) {
+            images.forEach(image => {
+                // Detect mime type from data URL
+                const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType,
+                        data: image.replace(/^data:image\/\w+;base64,/, '')
+                    }
+                });
             });
         }
 
@@ -760,11 +766,12 @@ Text: "${text}"`;
 
     /**
      * Edit a collection using AI with multimodal inputs
-     * @param {Object} input - { collectionId: string, instructions: string, audio?: base64, image?: base64, targetLanguage: string, nativeLanguage: string }
+     * @param {Object} input - { collectionId: string, instructions: string, audio?: base64, images?: base64[], targetLanguage: string, nativeLanguage: string }
      * @returns {Promise<Object>} - Modified collection data with changes
      */
     async editCollectionWithAI(input) {
-        const { collectionId, instructions, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
+        const { collectionId, instructions, audio, images = [], text, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
+        const hasImages = images && images.length > 0;
 
         // Get current collection data
         const collection = DataStore.getCollection(collectionId);
@@ -778,7 +785,7 @@ Text: "${text}"`;
         if (instructions) inputDescription += `User instructions: "${instructions}"\n`;
         if (text) inputDescription += `Additional text: "${text}"\n`;
         if (audio) inputDescription += 'Audio instructions provided.\n';
-        if (image) inputDescription += 'Image provided for context.\n';
+        if (hasImages) inputDescription += `${images.length} image${images.length > 1 ? 's' : ''} provided for context.\n`;
 
         const prompt = `You are a language learning expert. Edit this flashcard collection based on user instructions.
 
@@ -826,13 +833,18 @@ Respond ONLY with valid JSON:
             });
         }
 
-        // Add image if provided
-        if (image) {
-            contents[0].parts.push({
-                inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: image.replace(/^data:image\/\w+;base64,/, '')
-                }
+        // Add images if provided
+        if (hasImages) {
+            images.forEach(image => {
+                // Detect mime type from data URL
+                const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                contents[0].parts.push({
+                    inlineData: {
+                        mimeType,
+                        data: image.replace(/^data:image\/\w+;base64,/, '')
+                    }
+                });
             });
         }
 
