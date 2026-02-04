@@ -8,8 +8,7 @@ const SupabaseService = {
     initialized: false,
     missingConfig: null,
     initError: null,
-    // Fixed user ID for single-user mode (no auth required)
-    SINGLE_USER_ID: '00000000-0000-0000-0000-000000000001',
+    user: null,
 
     // Initialize Supabase client
     async init() {
@@ -43,7 +42,24 @@ const SupabaseService = {
 
             this.client = window.supabase.createClient(supabaseUrl, supabaseKey);
             this.initialized = true;
-            console.log('✅ Supabase initialized (single-user mode, no auth)');
+
+            // Restore existing session
+            const { data: { session } } = await this.client.auth.getSession();
+            if (session?.user) {
+                this.user = session.user;
+                console.log('Restored auth session for:', this.user.email);
+            }
+
+            // Listen for auth changes (login, logout, token refresh)
+            this.client.auth.onAuthStateChange((event, session) => {
+                if (session?.user) {
+                    this.user = session.user;
+                } else if (event === 'SIGNED_OUT') {
+                    this.user = null;
+                }
+            });
+
+            console.log('Supabase initialized');
             return true;
         } catch (error) {
             console.error('Failed to initialize Supabase:', error);
@@ -72,23 +88,10 @@ const SupabaseService = {
     isAuthenticated() {
         return !!this.user;
     },
-    isAnonymous() {
-        return !!this.user?.isAnonymous;
-    },
-    allowAnonymousAccess() {
-        return window.LINGUAFLOW_ALLOW_ANON_SUPABASE !== false;
-    },
-    getAnonymousUserId() {
-        const existing = localStorage.getItem(this.anonUserKey);
-        if (existing) return existing;
-        const anonId = crypto.randomUUID();
-        localStorage.setItem(this.anonUserKey, anonId);
-        return anonId;
-    },
 
-    // Get current user ID
+    // Get current user ID (returns null if not authenticated)
     getUserId() {
-        return this.user?.id;
+        return this.user?.id || null;
     },
 
     // ==================== AUTH METHODS ====================
@@ -105,6 +108,7 @@ const SupabaseService = {
         });
 
         if (error) throw error;
+        this.user = data.user;
         return data;
     },
 
@@ -140,7 +144,7 @@ const SupabaseService = {
 
         const { error } = await this.client.auth.signOut();
         if (error) throw error;
-        this.user = this.allowAnonymousAccess() ? { id: this.getAnonymousUserId(), isAnonymous: true } : null;
+        this.user = null;
     },
 
     async resetPassword(email) {
@@ -173,6 +177,23 @@ const SupabaseService = {
         return this.transformProfile(data);
     },
 
+    async upsertProfile(profileData) {
+        if (!this.client || !this.user) return null;
+
+        const dbData = this.transformProfileForDB(profileData);
+        dbData.id = this.user.id;
+        dbData.updated_at = new Date().toISOString();
+
+        const { data, error } = await this.client
+            .from('profiles')
+            .upsert(dbData, { onConflict: 'id' })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return this.transformProfile(data);
+    },
+
     async updateProfile(updates) {
         if (!this.client || !this.user) return null;
 
@@ -193,12 +214,12 @@ const SupabaseService = {
     // ==================== COLLECTIONS METHODS ====================
 
     async getCollections() {
-        if (!this.client) return [];
+        if (!this.client || !this.getUserId()) return [];
 
         const { data, error } = await this.client
             .from('collections')
             .select('*')
-            .eq('user_id', this.SINGLE_USER_ID)
+            .eq('user_id', this.getUserId())
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -222,12 +243,12 @@ const SupabaseService = {
     },
 
     async addCollection(collection) {
-        if (!this.client) return null;
+        if (!this.client || !this.getUserId()) return null;
 
         const { data, error } = await this.client
             .from('collections')
             .insert({
-                user_id: this.SINGLE_USER_ID,
+                user_id: this.getUserId(),
                 name: collection.name,
                 emoji: collection.emoji || '📚',
                 image: collection.image,
@@ -274,12 +295,12 @@ const SupabaseService = {
     // ==================== CARDS METHODS ====================
 
     async getCards(collectionId = null) {
-        if (!this.client) return [];
+        if (!this.client || !this.getUserId()) return [];
 
         let query = this.client
             .from('cards')
             .select('*')
-            .eq('user_id', this.SINGLE_USER_ID);
+            .eq('user_id', this.getUserId());
 
         if (collectionId) {
             query = query.eq('collection_id', collectionId);
@@ -308,12 +329,12 @@ const SupabaseService = {
     },
 
     async getDueCards(collectionId = null) {
-        if (!this.client) return [];
+        if (!this.client || !this.getUserId()) return [];
 
         let query = this.client
             .from('cards')
             .select('*')
-            .eq('user_id', this.SINGLE_USER_ID)
+            .eq('user_id', this.getUserId())
             .lte('next_review', new Date().toISOString());
 
         if (collectionId) {
@@ -330,12 +351,12 @@ const SupabaseService = {
     },
 
     async addCard(card) {
-        if (!this.client) return null;
+        if (!this.client || !this.getUserId()) return null;
 
         const { data, error } = await this.client
             .from('cards')
             .insert({
-                user_id: this.SINGLE_USER_ID,
+                user_id: this.getUserId(),
                 collection_id: card.collectionId,
                 front: card.front,
                 back: card.back,
@@ -393,12 +414,12 @@ const SupabaseService = {
     // ==================== DIALOGUES METHODS ====================
 
     async getDialogues() {
-        if (!this.client) return [];
+        if (!this.client || !this.getUserId()) return [];
 
         const { data, error } = await this.client
             .from('dialogues')
             .select('*')
-            .eq('user_id', this.SINGLE_USER_ID)
+            .eq('user_id', this.getUserId())
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -409,12 +430,12 @@ const SupabaseService = {
     },
 
     async addDialogue(dialogue) {
-        if (!this.client) return null;
+        if (!this.client || !this.getUserId()) return null;
 
         const { data, error } = await this.client
             .from('dialogues')
             .insert({
-                user_id: this.SINGLE_USER_ID,
+                user_id: this.getUserId(),
                 title: dialogue.title,
                 setting: dialogue.setting,
                 duration: dialogue.duration,
@@ -441,7 +462,7 @@ const SupabaseService = {
             streak: data.streak,
             totalCardsLearned: data.total_cards_learned,
             dailyGoal: data.daily_goal,
-            settings: data.settings,
+            settings: data.settings || {},
             onboarded: data.onboarded,
             createdAt: data.created_at,
             updatedAt: data.updated_at

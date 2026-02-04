@@ -5,29 +5,23 @@
 const app = {
     currentScreen: null,
     history: [],
-    screensWithNav: ['home', 'collections', 'dialogue-settings', 'settings'],
+    screensWithNav: ['home', 'collections', 'settings'],
 
     async init() {
-        console.log('🚀 Initializing LinguaFlow...');
+        console.log('Initializing LinguaFlow...');
         this.registerSupabaseWarnings();
         this.registerAuthEvents();
 
         // Initialize Supabase
         await SupabaseService.init();
-        console.log('✅ Supabase initialized:', SupabaseService.initialized);
 
-        if (SupabaseService.initialized && !SupabaseService.isAuthenticated() && !SupabaseService.allowAnonymousAccess()) {
-            const cleared = DataStore.clearLocalDataOnce();
-            if (cleared) {
-                console.log('🧹 Cleared local storage data for a fresh Supabase login.');
-            }
+        if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
+            // Not logged in — show auth screen
             this.navigate('auth');
-            console.log('✅ App initialized');
             return;
         }
 
         await this.handleAuthenticatedSession();
-        console.log('✅ App initialized');
     },
 
     navigate(screenId, addToHistory = true) {
@@ -138,21 +132,19 @@ const app = {
         const user = DataStore.getUser();
         this.applyUserSettings(user);
 
-        // Single-user mode: always go to home (skip onboarding)
-        this.navigate('home');
+        // Check if user has completed onboarding
+        if (!DataStore.isOnboarded()) {
+            this.navigate('onboarding');
+        } else {
+            this.navigate('home');
+        }
     },
 
     applyUserSettings(user) {
-        if (user && user.geminiApiKey) {
-            console.log('📝 Loading API key from user profile');
-            GeminiService.API_KEY = user.geminiApiKey;
-            localStorage.setItem('gemini_api_key', user.geminiApiKey);
-        } else {
-            const apiKey = localStorage.getItem('gemini_api_key');
-            if (apiKey) {
-                console.log('📝 Loading API key from localStorage');
-                GeminiService.API_KEY = apiKey;
-            }
+        // Load API key from user profile settings (synced via Supabase)
+        const apiKey = user?.settings?.geminiApiKey || localStorage.getItem('gemini_api_key');
+        if (apiKey) {
+            GeminiService.API_KEY = apiKey;
         }
 
         if (user) {
@@ -432,7 +424,16 @@ const app = {
         const key = input?.value?.trim();
 
         if (key) {
-            await GeminiService.setApiKey(key);
+            // Save to GeminiService
+            GeminiService.API_KEY = key;
+            localStorage.setItem('gemini_api_key', key);
+
+            // Also persist in user profile settings (syncs to Supabase)
+            const user = DataStore.getUser();
+            await DataStore.updateUser({
+                settings: { ...user.settings, geminiApiKey: key }
+            });
+
             this.closeModal();
             this.showToast('API key saved!', 'success');
 

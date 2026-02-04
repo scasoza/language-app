@@ -32,12 +32,9 @@ const SettingsScreen = {
             <main class="flex-1 overflow-y-auto pb-10">
                 <!-- Profile Header -->
                 <section class="flex p-6 flex-col items-center">
-                    <div class="relative group cursor-pointer">
-                        <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-28 w-28 ring-4 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300 bg-gradient-to-br from-primary/30 to-blue-500/30 flex items-center justify-center">
+                    <div class="relative">
+                        <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-28 w-28 ring-4 ring-primary/20 bg-gradient-to-br from-primary/30 to-blue-500/30 flex items-center justify-center">
                             <span class="material-symbols-outlined text-5xl text-white/80">person</span>
-                        </div>
-                        <div class="absolute bottom-0 right-0 bg-primary text-background-dark p-1.5 rounded-full shadow-lg border-2 border-background-dark flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">edit</span>
                         </div>
                     </div>
 
@@ -203,7 +200,7 @@ const SettingsScreen = {
                             <span class="material-symbols-outlined text-slate-400 group-hover:text-primary text-[20px]">chevron_right</span>
                         </button>
 
-                        <button onclick="SettingsScreen.resetData()" class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors w-full group">
+                        <button onclick="SettingsScreen.resetData()" class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors w-full group">
                             <div class="flex items-center gap-3">
                                 <div class="bg-red-500/10 p-2 rounded-lg">
                                     <span class="material-symbols-outlined text-red-500 text-[20px]">delete</span>
@@ -211,6 +208,16 @@ const SettingsScreen = {
                                 <span class="font-medium text-red-500">Reset All Data</span>
                             </div>
                             <span class="material-symbols-outlined text-slate-400 group-hover:text-red-500 text-[20px]">chevron_right</span>
+                        </button>
+
+                        <button onclick="SettingsScreen.signOut()" class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors w-full group">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-slate-200 dark:bg-slate-700 p-2 rounded-lg">
+                                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">logout</span>
+                                </div>
+                                <span class="font-medium">Sign Out</span>
+                            </div>
+                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary text-[20px]">chevron_right</span>
                         </button>
                     </div>
                 </div>
@@ -401,6 +408,17 @@ const SettingsScreen = {
         app.closeModal();
         app.showToast('All data has been reset', 'success');
         app.navigate('onboarding');
+    },
+
+    async signOut() {
+        try {
+            await SupabaseService.signOut();
+            app.showToast('Signed out', 'success');
+            app.navigate('auth');
+        } catch (error) {
+            console.error('Sign out error:', error);
+            app.showToast('Failed to sign out', 'error');
+        }
     }
 };
 
