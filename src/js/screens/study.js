@@ -296,7 +296,8 @@ const StudyScreen = {
                                         </div>
                                     ` : ''}
 
-                                    <div class="mt-4 w-full">
+                                    <!-- Hidden for MVP - Ask Question + Q&A History -->
+                                    <div class="mt-4 w-full" hidden>
                                         <button onclick="event.stopPropagation(); StudyScreen.askQuestion()" class="w-full bg-primary/10 border border-primary/30 text-primary font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-background-dark transition-all">
                                             <span class="material-symbols-outlined">help</span>
                                             Ask Question
