@@ -42,17 +42,10 @@ const HomeScreen = {
                     <div class="absolute -right-16 -top-16 size-64 rounded-full bg-primary/5 blur-3xl"></div>
                     <div class="relative flex flex-col p-6 items-center text-center">
                         <div class="relative mb-6 flex items-center justify-center">
-                            <div class="size-40 rounded-full border-[6px] border-slate-100 dark:border-white/10 flex items-center justify-center relative">
-                                <svg class="absolute inset-0 size-full -rotate-90" viewBox="0 0 100 100">
-                                    <circle class="text-primary" cx="50" cy="50" fill="transparent" r="46"
-                                        stroke="currentColor"
-                                        stroke-dasharray="${290}"
-                                        stroke-dashoffset="${290 - (stats.totalDue > 0 ? Math.min((stats.totalDue / 50) * 290, 290) : 0)}"
-                                        stroke-linecap="round" stroke-width="8"></circle>
-                                </svg>
+                            <div class="size-40 rounded-full border-[6px] ${stats.totalDue > 0 ? 'border-primary/30' : 'border-slate-100 dark:border-white/10'} flex items-center justify-center relative">
                                 <div class="flex flex-col items-center">
                                     <span class="text-5xl font-bold tracking-tighter">${stats.totalDue}</span>
-                                    <span class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">Due</span>
+                                    <span class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">${stats.totalDue === 1 ? 'Card Due' : 'Cards Due'}</span>
                                 </div>
                             </div>
                         </div>
@@ -145,6 +138,8 @@ const HomeScreen = {
     renderCollectionCard(col) {
         const progress = col.cardCount > 0 ? (col.mastered / col.cardCount) * 100 : 0;
         const progressColor = progress >= 75 ? 'bg-primary' : progress >= 50 ? 'bg-yellow-400' : 'bg-blue-400';
+        // Calculate due cards dynamically from actual card data
+        const dueCount = DataStore.getDueCards(col.id).length;
 
         return `
             <button onclick="app.openCollection('${col.id}')" class="snap-start shrink-0 w-60 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col text-left hover:scale-[1.02] transition-transform active:scale-[0.98]">
@@ -155,7 +150,7 @@ const HomeScreen = {
                 <div class="p-3">
                     <h4 class="font-bold text-base mb-1 truncate">${col.name}</h4>
                     <div class="flex items-center justify-between">
-                        <span class="text-xs text-slate-500 dark:text-slate-400">${col.dueCards} cards due</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">${dueCount} cards due</span>
                         <div class="h-1.5 w-16 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                             <div class="h-full ${progressColor} rounded-full" style="width: ${progress}%"></div>
                         </div>

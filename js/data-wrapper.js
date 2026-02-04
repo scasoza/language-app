@@ -13,83 +13,47 @@ const DataStore = {
     onboarded: false,
     useSupabase: false,
 
-    // Check if Supabase is available (no auth required)
+    // Check if Supabase is available and user is authenticated
     canUseSupabase() {
-        return this.useSupabase && SupabaseService && SupabaseService.initialized;
+        return this.useSupabase && SupabaseService && SupabaseService.initialized && SupabaseService.isAuthenticated();
     },
 
     // Initialize - load from Supabase
     async init() {
-        console.log('📦 Initializing DataStore...');
+        console.log('Initializing DataStore...');
 
-        // Use Supabase if it's initialized (no auth required)
+        // Use Supabase if it's initialized and user is authenticated
         this.useSupabase = SupabaseService && SupabaseService.initialized;
 
-        console.log(`🔍 useSupabase: ${this.useSupabase}`);
-
-        if (this.useSupabase) {
-            console.log('✅ Loading data from Supabase...');
+        if (this.canUseSupabase()) {
+            console.log('Loading data from Supabase...');
             await this.loadFromSupabase();
         } else {
-            console.log('⚠️ Supabase not available, using localStorage');
+            console.log('Supabase not available, using localStorage');
             this.loadFromLocalStorage();
         }
 
-        console.log('✅ DataStore initialized');
-        console.log(`📊 Data loaded: ${this.collections.length} collections, ${this.cards.length} cards`);
-    },
-
-    clearLocalDataOnce() {
-        const flagKey = 'linguaflow_local_cleared_v1';
-        if (localStorage.getItem(flagKey) === 'true') {
-            return false;
-        }
-
-        const keysToClear = [
-            'linguaflow_initialized',
-            'linguaflow_onboarded',
-            'linguaflow_user',
-            'linguaflow_collections',
-            'linguaflow_cards',
-            'linguaflow_dialogues',
-            'linguaflow_supabase_migrated'
-        ];
-
-        let cleared = false;
-        keysToClear.forEach(key => {
-            if (localStorage.getItem(key) !== null) {
-                localStorage.removeItem(key);
-                cleared = true;
-            }
-        });
-
-        localStorage.setItem(flagKey, 'true');
-        return cleared;
+        console.log(`DataStore initialized: ${this.collections.length} collections, ${this.cards.length} cards`);
     },
 
     async loadFromSupabase() {
         try {
-            // Single-user mode: load user settings from localStorage (no profiles table)
-            this.onboarded = localStorage.getItem('linguaflow_onboarded') === 'true';
-            this.user = JSON.parse(localStorage.getItem('linguaflow_user') || 'null');
+            // Load user profile from Supabase profiles table
+            const profile = await SupabaseService.getProfile();
+            if (profile) {
+                this.user = profile;
+                this.onboarded = profile.onboarded || false;
+            } else {
+                // No profile yet — new user, will be created during onboarding
+                this.user = null;
+                this.onboarded = false;
+            }
 
             // Load collections
             this.collections = await SupabaseService.getCollections();
 
             // Load cards
             this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
-
-            const localCollections = JSON.parse(localStorage.getItem('linguaflow_collections') || '[]');
-            const localCards = JSON.parse(localStorage.getItem('linguaflow_cards') || '[]');
-            const migrationFlagKey = 'linguaflow_supabase_migrated';
-            const hasMigrated = localStorage.getItem(migrationFlagKey) === 'true';
-
-            if (this.cards.length === 0 && localCards.length > 0 && !hasMigrated) {
-                await this.migrateLocalDataToSupabase(localCollections, localCards, this.collections);
-                localStorage.setItem(migrationFlagKey, 'true');
-                this.collections = await SupabaseService.getCollections();
-                this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
-            }
 
             // Load dialogues
             this.dialogues = await SupabaseService.getDialogues();
@@ -130,51 +94,6 @@ const DataStore = {
         return normalizedCard;
     },
 
-    async migrateLocalDataToSupabase(localCollections, localCards, existingCollections = []) {
-        const collectionIdMap = new Map();
-        const existingCollectionsByName = new Map(
-            existingCollections.map(collection => [collection.name, collection.id])
-        );
-
-        for (const collection of localCollections) {
-            try {
-                const existingId = existingCollectionsByName.get(collection.name);
-                if (existingId) {
-                    collectionIdMap.set(collection.id, existingId);
-                    continue;
-                }
-
-                const createdCollection = await SupabaseService.addCollection({
-                    name: collection.name,
-                    emoji: collection.emoji,
-                    image: collection.image,
-                    cardCount: collection.cardCount || 0,
-                    mastered: collection.mastered || 0,
-                    dueCards: collection.dueCards || 0
-                });
-                if (createdCollection?.id) {
-                    collectionIdMap.set(collection.id, createdCollection.id);
-                }
-            } catch (error) {
-                console.error('Failed to migrate collection to Supabase:', error);
-            }
-        }
-
-        for (const card of localCards) {
-            const mappedCollectionId = collectionIdMap.get(card.collectionId) || card.collectionId;
-            if (!mappedCollectionId) continue;
-
-            try {
-                await SupabaseService.addCard({
-                    ...card,
-                    collectionId: mappedCollectionId
-                });
-            } catch (error) {
-                console.error('Failed to migrate card to Supabase:', error);
-            }
-        }
-    },
-
     // User methods
     getUser() {
         if (!this.user) {
@@ -183,6 +102,9 @@ const DataStore = {
                 level: 1,
                 targetLanguage: 'Chinese',
                 nativeLanguage: 'English',
+                dailyGoal: 10,
+                streak: 0,
+                totalCardsLearned: 0,
                 settings: {
                     darkMode: true,
                     audioAutoplay: true,
@@ -195,7 +117,6 @@ const DataStore = {
         // Ensure settings object has all default properties
         return {
             ...this.user,
-            targetLanguage: 'Chinese',
             settings: {
                 darkMode: true,
                 audioAutoplay: true,
@@ -207,10 +128,17 @@ const DataStore = {
     },
 
     async updateUser(updates) {
-        this.user = { ...this.user, ...updates };
+        this.user = { ...this.getUser(), ...updates };
 
-        // Always save to localStorage (single-user mode uses localStorage for user settings)
-        this.saveToLocalStorage();
+        if (this.canUseSupabase()) {
+            try {
+                await SupabaseService.upsertProfile(this.user);
+            } catch (error) {
+                console.error('Error syncing profile to Supabase:', error);
+            }
+        } else {
+            this.saveToLocalStorage();
+        }
 
         return this.user;
     },
@@ -219,10 +147,18 @@ const DataStore = {
         return this.onboarded;
     },
 
-    setOnboarded(value = true) {
+    async setOnboarded(value = true) {
         this.onboarded = value;
-        // Always save to localStorage
-        this.saveToLocalStorage();
+
+        if (this.canUseSupabase()) {
+            try {
+                await SupabaseService.upsertProfile({ ...this.getUser(), onboarded: value });
+            } catch (error) {
+                console.error('Error syncing onboarded to Supabase:', error);
+            }
+        } else {
+            this.saveToLocalStorage();
+        }
     },
 
     // Collections methods
@@ -238,12 +174,9 @@ const DataStore = {
         let newCollection;
 
         if (this.canUseSupabase()) {
-            // Supabase-only path for authenticated users
             newCollection = await SupabaseService.addCollection(collection);
             this.collections.push(newCollection);
-            console.log('✅ Collection saved to Supabase:', newCollection.id);
         } else {
-            // localStorage-only path for anonymous users
             newCollection = {
                 id: 'col_' + Date.now(),
                 cardCount: 0,
@@ -253,7 +186,6 @@ const DataStore = {
             };
             this.collections.push(newCollection);
             this.saveToLocalStorage();
-            console.log('💾 Collection saved to localStorage:', newCollection.id);
         }
 
         return newCollection;
@@ -321,12 +253,9 @@ const DataStore = {
         let newCard;
 
         if (this.canUseSupabase()) {
-            // Supabase-only path for authenticated users
             newCard = await SupabaseService.addCard(card);
             this.cards.push(newCard);
-            console.log('✅ Card saved to Supabase:', newCard.id);
         } else {
-            // localStorage-only path for anonymous users
             newCard = {
                 id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                 difficulty: 2,
@@ -338,7 +267,6 @@ const DataStore = {
             };
             this.cards.push(newCard);
             this.saveToLocalStorage();
-            console.log('💾 Card saved to localStorage:', newCard.id);
         }
 
         // Update collection card count
@@ -449,12 +377,9 @@ const DataStore = {
         let newDialogue;
 
         if (this.canUseSupabase()) {
-            // Supabase-only path for authenticated users
             newDialogue = await SupabaseService.addDialogue(dialogue);
             this.dialogues.push(newDialogue);
-            console.log('✅ Dialogue saved to Supabase:', newDialogue.id);
         } else {
-            // localStorage-only path for anonymous users
             newDialogue = {
                 id: 'dlg_' + Date.now(),
                 createdAt: new Date().toISOString(),
@@ -462,7 +387,6 @@ const DataStore = {
             };
             this.dialogues.push(newDialogue);
             this.saveToLocalStorage();
-            console.log('💾 Dialogue saved to localStorage:', newDialogue.id);
         }
 
         return newDialogue;
@@ -495,6 +419,21 @@ const DataStore = {
             totalDue,
             masteryPercent: totalCards > 0 ? Math.round((totalMastered / totalCards) * 100) : 0
         };
+    },
+
+    // Reset all data
+    async reset() {
+        this.user = null;
+        this.collections = [];
+        this.cards = [];
+        this.dialogues = [];
+        this.onboarded = false;
+
+        // Clear localStorage
+        ['linguaflow_onboarded', 'linguaflow_user', 'linguaflow_collections',
+         'linguaflow_cards', 'linguaflow_dialogues', 'gemini_api_key'].forEach(key => {
+            localStorage.removeItem(key);
+        });
     }
 };
 

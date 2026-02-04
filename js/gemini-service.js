@@ -44,31 +44,20 @@ const GeminiService = {
         }
     },
 
-    // Set API key
-    async setApiKey(key) {
+    // Set API key (called from app.saveApiKey which handles persistence)
+    setApiKey(key) {
         this.API_KEY = key;
         localStorage.setItem('gemini_api_key', key);
-
-        // Also save to user profile for persistence across sessions
-        if (typeof DataStore !== 'undefined' && DataStore.updateUser) {
-            try {
-                await DataStore.updateUser({ geminiApiKey: key });
-            } catch (error) {
-                console.error('Failed to save API key to user profile:', error);
-            }
-        }
     },
 
     // Get API key from storage
     getApiKey() {
         if (!this.API_KEY) {
-            // Try to get from user profile first (more persistent)
+            // Try user profile settings first (synced via Supabase)
             if (typeof DataStore !== 'undefined' && DataStore.getUser) {
                 const user = DataStore.getUser();
-                if (user && user.geminiApiKey) {
-                    this.API_KEY = user.geminiApiKey;
-                    // Also update localStorage for offline access
-                    localStorage.setItem('gemini_api_key', user.geminiApiKey);
+                if (user?.settings?.geminiApiKey) {
+                    this.API_KEY = user.settings.geminiApiKey;
                     return this.API_KEY;
                 }
             }
