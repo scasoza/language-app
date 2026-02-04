@@ -272,7 +272,8 @@ const StudyScreen = {
                                         <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group" title="Replay audio">
                                             <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
                                         </button>
-                                        <button onclick="event.stopPropagation(); StudyScreen.showGrammarBreakdown()" class="size-10 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Grammar breakdown">
+                                        <!-- Hidden for MVP -->
+                                        <button hidden onclick="event.stopPropagation(); StudyScreen.showGrammarBreakdown()" class="size-10 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Grammar breakdown">
                                             <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark">school</span>
                                         </button>
                                     </div>
