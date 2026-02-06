@@ -115,15 +115,33 @@ const StudyScreen = {
             .replace(/'/g, '&#39;');
     },
 
+    tokenizePinyin(reading) {
+        if (!reading) return [];
+
+        return reading
+            .replace(/[()（）]/g, ' ')
+            .replace(/[，。！？,.!?;:]/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+    },
+
+    countChineseCharacters(text) {
+        if (!text) return 0;
+        return (text.match(/[一-鿿]/g) || []).length;
+    },
+
     renderPinyin(text, reading) {
         if (!text) return '';
         if (!reading) return this.escapeHtml(text);
 
-        const tokens = reading
-            .trim()
-            .split(/\s+/)
-            .map(token => token.replace(/[，。！？,.!?]/g, ''))
-            .filter(Boolean);
+        const tokens = this.tokenizePinyin(reading);
+        const chineseCharCount = this.countChineseCharacters(text);
+
+        // Avoid incorrect ruby mapping when syllable count does not match Hanzi count.
+        if (tokens.length !== chineseCharCount) {
+            return this.escapeHtml(text);
+        }
 
         let tokenIndex = 0;
         return Array.from(text).map(char => {
@@ -132,7 +150,7 @@ const StudyScreen = {
             }
 
             const escapedChar = this.escapeHtml(char);
-            if (/[\u4E00-\u9FFF]/.test(char) && tokenIndex < tokens.length) {
+            if (/[一-鿿]/.test(char) && tokenIndex < tokens.length) {
                 const escapedReading = this.escapeHtml(tokens[tokenIndex]);
                 tokenIndex += 1;
                 return `
@@ -1159,23 +1177,14 @@ const StudyScreen = {
     generatePinyinRuby(chineseText, pinyinText, makeClickable = false) {
         if (!chineseText || !pinyinText) return chineseText;
 
-        // Remove parentheses from pinyin if present
-        const cleanPinyin = pinyinText.replace(/[()（）]/g, '').trim();
-
-        // Split pinyin by spaces
-        const pinyinSyllables = cleanPinyin.split(/\s+/);
+        const pinyinSyllables = this.tokenizePinyin(pinyinText);
 
         // Split Chinese text into characters, grouping common multi-character words
         const chineseChars = this.segmentChinese(chineseText);
 
-        // If counts don't match, try simple character-by-character
+        // If counts don't match, avoid rendering incorrect ruby annotations.
         if (pinyinSyllables.length !== chineseChars.length) {
-            // Fall back to character-by-character if mismatch
-            const chars = chineseText.split('');
-            // If still mismatch, just return plain text with pinyin below
-            if (pinyinSyllables.length < chars.length) {
-                return chineseText;
-            }
+            return this.escapeHtml(chineseText);
         }
 
         // Build ruby HTML with optional click handlers
