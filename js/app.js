@@ -423,12 +423,16 @@ const app = {
         const input = document.getElementById('api-key-input');
         const key = input?.value?.trim();
 
-        if (key) {
-            // Save to GeminiService
-            GeminiService.API_KEY = key;
-            localStorage.setItem('gemini_api_key', key);
+        if (!key) {
+            this.showToast('Please enter an API key', 'error');
+            return;
+        }
 
-            // Also persist in user profile settings (syncs to Supabase)
+        try {
+            // Save to GeminiService and local cache first
+            GeminiService.setApiKey(key);
+
+            // Also persist in user profile settings (syncs to Supabase when available)
             const user = DataStore.getUser();
             await DataStore.updateUser({
                 settings: { ...user.settings, geminiApiKey: key }
@@ -439,8 +443,9 @@ const app = {
 
             // Refresh current screen
             this.renderScreen(this.currentScreen);
-        } else {
-            this.showToast('Please enter an API key', 'error');
+        } catch (error) {
+            console.error('Failed to save API key:', error);
+            this.showToast('Failed to save API key. Please try again.', 'error');
         }
     },
 
