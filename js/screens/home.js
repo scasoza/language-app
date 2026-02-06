@@ -21,7 +21,7 @@ const HomeScreen = {
 
             container.innerHTML = `
             <!-- Header -->
-            <header class="flex items-center justify-between px-4 pt-6 pb-2 sticky top-0 z-10 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
+            <header class="flex items-center justify-between px-4 lg:px-6 pt-6 pb-2 sticky top-0 z-10 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center size-10 rounded-full bg-orange-500/10 text-orange-500">
                         <span class="material-symbols-outlined text-2xl">local_fire_department</span>
@@ -37,8 +37,8 @@ const HomeScreen = {
             </header>
 
             <!-- Main Study Card -->
-            <section class="p-4 w-full">
-                <div class="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm dark:shadow-none border border-slate-200 dark:border-white/5">
+            <section class="p-4 w-full lg:px-6 lg:pt-6">
+                <div class="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm dark:shadow-none border border-slate-200 dark:border-white/5 lg:max-w-4xl">
                     <div class="absolute -right-16 -top-16 size-64 rounded-full bg-primary/5 blur-3xl"></div>
                     <div class="relative flex flex-col p-6 items-center text-center">
                         <div class="relative mb-6 flex items-center justify-center">
@@ -62,8 +62,8 @@ const HomeScreen = {
             </section>
 
             <!-- Stats Row -->
-            <section class="px-4 py-2">
-                <div class="flex gap-4">
+            <section class="px-4 lg:px-6 py-2">
+                <div class="grid grid-cols-2 gap-4 lg:max-w-4xl">
                     <div class="flex-1 flex flex-col gap-1 rounded-2xl p-4 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
@@ -82,8 +82,8 @@ const HomeScreen = {
             </section>
 
             <!-- Quick Add Banner -->
-            <section class="px-4 py-4">
-                <button onclick="app.navigate('add-word')" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform active:scale-[0.98]">
+            <section class="px-4 lg:px-6 py-4">
+                <button onclick="app.navigate('add-word')" class="w-full lg:max-w-4xl flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform active:scale-[0.98]">
                     <div class="flex flex-col items-start">
                         <span class="font-bold text-lg">New word?</span>
                         <span class="text-sm text-blue-100 opacity-90">Add it to your collection instantly.</span>
@@ -95,16 +95,16 @@ const HomeScreen = {
             </section>
 
             <!-- Recent Collections -->
-            <section class="mt-2">
-                <div class="flex items-center justify-between px-4 pb-3">
+            <section class="mt-2 px-4 lg:px-6">
+                <div class="flex items-center justify-between pb-3 lg:max-w-4xl">
                     <h3 class="text-lg font-bold leading-tight">Jump back in</h3>
                     <button onclick="app.navigate('collections')" class="text-sm font-medium text-primary hover:text-primary/80">View all</button>
                 </div>
-                <div class="flex overflow-x-auto no-scrollbar pb-4 pl-4 gap-4 snap-x">
+                <div class="flex overflow-x-auto no-scrollbar pb-4 gap-4 snap-x lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0 lg:max-w-5xl">
                     ${collections.map(col => this.renderCollectionCard(col)).join('')}
 
                     <!-- Add New Collection Card -->
-                    <button onclick="app.showCreateCollectionModal()" class="snap-start shrink-0 w-60 rounded-xl bg-surface-light dark:bg-surface-dark border-2 border-dashed border-slate-300 dark:border-white/10 overflow-hidden flex flex-col items-center justify-center h-[180px] hover:border-primary transition-colors group">
+                    <button onclick="app.showCreateCollectionModal()" class="snap-start shrink-0 w-60 lg:w-auto rounded-xl bg-surface-light dark:bg-surface-dark border-2 border-dashed border-slate-300 dark:border-white/10 overflow-hidden flex flex-col items-center justify-center h-[180px] hover:border-primary transition-colors group">
                         <div class="flex flex-col items-center gap-2">
                             <div class="size-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                 <span class="material-symbols-outlined text-primary text-2xl">add</span>
@@ -142,7 +142,7 @@ const HomeScreen = {
         const dueCount = DataStore.getDueCards(col.id).length;
 
         return `
-            <button onclick="app.openCollection('${col.id}')" class="snap-start shrink-0 w-60 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col text-left hover:scale-[1.02] transition-transform active:scale-[0.98]">
+            <button onclick="app.openCollection('${col.id}')" class="snap-start shrink-0 w-60 lg:w-auto rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col text-left hover:scale-[1.02] transition-transform active:scale-[0.98]">
                 <div class="h-32 w-full bg-cover bg-center relative" style="background-image: url('${col.image}');">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <span class="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/40 backdrop-blur-sm text-xs font-medium text-white border border-white/10">${col.emoji} ${col.name}</span>

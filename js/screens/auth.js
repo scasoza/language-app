@@ -314,6 +314,8 @@ const AuthScreen = {
             const message = error.message || 'Failed to create account';
             if (message.includes('Email address') && message.includes('invalid')) {
                 this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
+            } else if (message.toLowerCase().includes('unexpected_failure')) {
+                this.error = 'Supabase signup failed server-side (500). Run migration 004_fix_auth_signup_trigger.sql and check Auth settings (email confirmations / allowlist).';
             } else {
                 this.error = message;
             }

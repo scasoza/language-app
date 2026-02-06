@@ -14,7 +14,7 @@ const CollectionsScreen = {
             <!-- Sticky Header Section -->
             <header class="sticky top-0 z-50 w-full bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-black/5 dark:border-white/5 pb-2">
                 <!-- Top Bar -->
-                <div class="flex items-center justify-between px-4 pt-4 pb-2">
+                <div class="flex items-center justify-between px-4 lg:px-8 pt-4 pb-2 max-w-6xl mx-auto w-full">
                     <h1 class="text-3xl font-bold tracking-tight">Collections</h1>
                     <button onclick="app.navigate('settings')" class="rounded-full p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
                         <span class="material-symbols-outlined text-2xl">account_circle</span>
@@ -22,7 +22,7 @@ const CollectionsScreen = {
                 </div>
 
                 <!-- Search Bar -->
-                <div class="px-4 py-2">
+                <div class="px-4 lg:px-8 py-2 max-w-6xl mx-auto w-full">
                     <label class="group flex items-center w-full h-12 rounded-xl bg-white dark:bg-[#224936] px-3 shadow-sm focus-within:ring-2 focus-within:ring-primary/50 transition-all">
                         <span class="material-symbols-outlined text-slate-400 dark:text-[#90cbad]">search</span>
                         <input
@@ -37,13 +37,13 @@ const CollectionsScreen = {
                 </div>
 
                 <!-- Filter Chips -->
-                <div class="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar">
+                <div class="flex gap-2 px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar max-w-6xl mx-auto w-full">
                     ${this.renderFilterChips()}
                 </div>
             </header>
 
             <!-- Main Grid Content -->
-            <main class="px-4 py-4">
+            <main class="px-4 lg:px-8 py-4 max-w-6xl mx-auto w-full">
                 <!-- AI Quick Create Banner -->
                 ${collections.length === 0 || this.filter === 'all' ? `
                     <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
@@ -63,7 +63,7 @@ const CollectionsScreen = {
                     </div>
                 ` : ''}
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 lg:gap-6">
                     ${collections.map(col => this.renderCollectionCard(col)).join('')}
 
                     <!-- Add New Collection Card -->
@@ -79,7 +79,7 @@ const CollectionsScreen = {
             </main>
 
             <!-- FAB -->
-            <div class="fixed bottom-24 right-4 z-40">
+            <div class="fixed bottom-24 right-6 z-40 lg:hidden">
                 <button onclick="app.showCreateCollectionModal()" class="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-[0_0_15px_rgba(13,242,128,0.4)] text-background-dark hover:scale-110 transition-transform duration-200 active:scale-95">
                     <span class="material-symbols-outlined text-3xl font-bold">add</span>
                 </button>
