@@ -137,11 +137,16 @@
         .toggle-checkbox:checked + .toggle-label { background-color: #0df280; }
 
         body { min-height: 100dvh; }
+        @media (min-width: 1024px) {
+            body {
+                background-image: radial-gradient(circle at 20% 20%, rgba(13,242,128,0.08), transparent 35%), radial-gradient(circle at 80% 10%, rgba(59,130,246,0.08), transparent 30%);
+            }
+        }
     </style>
 </head>
 
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
-    <div id="app" class="relative flex min-h-screen w-full flex-col max-w-md lg:max-w-5xl xl:max-w-6xl mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark lg:px-6 lg:py-6">
+    <div id="app" class="relative flex min-h-screen w-full flex-col max-w-md lg:max-w-6xl mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark lg:my-6 lg:rounded-3xl lg:border lg:border-slate-200/60 lg:dark:border-white/10">
 
         <!-- Auth Screen -->
         <div id="screen-auth" class="screen flex-col min-h-screen lg:pb-28">
