@@ -175,7 +175,7 @@ const AddWordScreen = {
                     </div>
                 </section>
 
-                <!-- AI Generate Button -->
+                <!-- Auto Fill Button -->
                 <section class="mt-auto pt-4">
                     <button onclick="AddWordScreen.generateWithAI()" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white shadow-lg hover:scale-[1.02] transition-transform active:scale-[0.98] group ${this.isLoading ? 'opacity-50 pointer-events-none' : ''}">
                         <div class="flex items-center gap-3">
@@ -183,7 +183,7 @@ const AddWordScreen = {
                                 <span class="material-symbols-outlined">auto_awesome</span>
                             </div>
                             <div class="flex flex-col items-start">
-                                <span class="text-sm font-bold">Auto-fill with AI</span>
+                                <span class="text-sm font-bold">Auto-fill suggestion</span>
                                 <span class="text-xs text-white/70">Generate translation & examples</span>
                             </div>
                         </div>
@@ -267,7 +267,7 @@ const AddWordScreen = {
                 this.formData.example = card.example || '';
                 this.formData.exampleReading = card.exampleReading || '';
                 this.formData.exampleTranslation = card.exampleTranslation || '';
-                app.showToast('Generated with AI!', 'success');
+                app.showToast('Generated!', 'success');
             }
         } catch (error) {
             app.showToast(error.message, 'error');

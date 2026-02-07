@@ -47,6 +47,20 @@ Then open `http://localhost:3000` in your browser.
 3. Click "Setup API Key"
 4. Enter your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
 
+
+## Supabase Auth Setup (Multi-user)
+
+If you want real login for distribution, use the auth migrations in order:
+
+```bash
+# In Supabase SQL Editor run:
+# 1) supabase/migrations/002_remove_auth_single_user.sql
+# 2) supabase/migrations/003_restore_auth_multi_user.sql
+# 3) supabase/migrations/004_fix_auth_signup_trigger.sql
+```
+
+If signup returns `500 unexpected_failure` on `/auth/v1/signup`, it is usually the `on_auth_user_created` trigger failing to insert into `profiles`. Migration `004_fix_auth_signup_trigger.sql` replaces the trigger with a schema-qualified, search_path-safe version.
+
 ## Building for Android (Play Store)
 
 ### 1. Generate App Icons
