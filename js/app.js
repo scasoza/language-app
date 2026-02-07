@@ -141,9 +141,18 @@ const app = {
         // Check if user has completed onboarding
         if (!DataStore.isOnboarded()) {
             this.navigate('onboarding');
-        } else {
-            this.navigate('home');
+            return;
         }
+
+        this.navigate('home');
+
+        // Defensive fallback: ensure home always renders as the default logged-in screen.
+        requestAnimationFrame(() => {
+            const home = document.getElementById('screen-home');
+            if (this.currentScreen !== 'home' || !home || !home.innerHTML.trim()) {
+                this.navigate('home', false);
+            }
+        });
     },
 
     applyUserSettings(user) {
@@ -188,31 +197,41 @@ const app = {
         this.navigate('collection-detail');
     },
 
+
     showCreateCollectionModal() {
+        this.showCreateComposerModal();
+    },
+
+    showCreateComposerModal(initialMode = 'deck') {
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">Create Collection</h3>
+                <h3 class="text-lg font-bold">Create</h3>
                 <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
-            <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/5 dark:bg-white/5 mb-4">
+                <button id="create-tab-deck" onclick="app.switchCreateMode('deck')" class="rounded-lg px-3 py-2 text-sm font-semibold">New Deck</button>
+                <button id="create-tab-card" onclick="app.switchCreateMode('card')" class="rounded-lg px-3 py-2 text-sm font-semibold">New Card</button>
+            </div>
+
+            <div id="create-mode-deck" class="space-y-4">
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Collection Name (Optional)</label>
-                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs (or let AI decide)" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Deck Name (Optional)</label>
+                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div>
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji (Optional)</label>
-                    <input type="text" id="collection-emoji" placeholder="🇪🇸 (or let AI decide)" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div class="pt-2 border-t border-white/10">
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-bold text-primary">✨ Generate with AI</p>
+                        <p class="text-sm font-bold text-primary">Create from text, audio, and images</p>
                         <div class="flex gap-2">
-                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio for AI">
+                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio">
                                 <span class="material-symbols-outlined text-primary text-xl">mic</span>
                             </button>
                             <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
@@ -222,24 +241,107 @@ const app = {
                         </div>
                     </div>
                     <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Describe what you want</label>
-                        <textarea id="collection-topic" rows="3" placeholder="Type or record audio: 'I want to learn 15 common Spanish phrases for ordering food at restaurants'" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What should this deck cover?</label>
+                        <textarea id="collection-topic" rows="3" placeholder="Examples: 20 airport phrases, beginner food vocabulary, business small talk" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
                         <div id="multimodal-preview" class="mt-2 flex flex-wrap gap-2"></div>
-                        <p class="text-xs text-slate-500 mt-1">💡 Tip: Use text, audio, images, or any combination. Specify card count in your description!</p>
+                        <p class="text-xs text-slate-500 mt-1">Tip: Images need text or audio context so the deck can be generated accurately.</p>
                     </div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
                     <button onclick="app.createCollection(false)" class="flex-1 bg-surface-dark border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/5 transition-colors">
-                        Create Empty
+                        Create Empty Deck
                     </button>
                     <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
                         <span class="material-symbols-outlined text-xl">auto_awesome</span>
-                        Generate
+                        Create from Input
                     </button>
                 </div>
             </div>
+
+            <div id="create-mode-card" class="space-y-4 hidden">
+                <div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Deck</label>
+                    <select id="new-card-collection" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50">
+                        ${this.getCollectionOptionsHtml()}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Front</label>
+                    <input id="new-card-front" type="text" placeholder="Word or phrase" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                </div>
+                <div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Back</label>
+                    <input id="new-card-back" type="text" placeholder="Translation or meaning" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                </div>
+                <div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Reading (Optional)</label>
+                    <input id="new-card-reading" type="text" placeholder="Pronunciation" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="app.navigate('add-word'); app.closeModal();" class="flex-1 bg-surface-dark border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/5 transition-colors">Open Full Editor</button>
+                    <button onclick="app.createCardFromModal()" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl">Create Card</button>
+                </div>
+            </div>
         `);
+
+        this.switchCreateMode(initialMode);
+    },
+
+    switchCreateMode(mode = 'deck') {
+        const isDeck = mode === 'deck';
+        document.getElementById('create-mode-deck')?.classList.toggle('hidden', !isDeck);
+        document.getElementById('create-mode-card')?.classList.toggle('hidden', isDeck);
+
+        const deckTab = document.getElementById('create-tab-deck');
+        const cardTab = document.getElementById('create-tab-card');
+        if (deckTab && cardTab) {
+            deckTab.className = `rounded-lg px-3 py-2 text-sm font-semibold ${isDeck ? 'bg-primary text-background-dark' : 'text-slate-500 dark:text-slate-300'}`;
+            cardTab.className = `rounded-lg px-3 py-2 text-sm font-semibold ${!isDeck ? 'bg-primary text-background-dark' : 'text-slate-500 dark:text-slate-300'}`;
+        }
+    },
+
+    getCollectionOptionsHtml() {
+        const collections = DataStore.getCollections();
+        if (!collections.length) {
+            return '<option value="">No decks yet — create one first</option>';
+        }
+
+        return collections.map(col => `<option value="${col.id}">${col.emoji || '📚'} ${col.name}</option>`).join('');
+    },
+
+    async createCardFromModal() {
+        const collectionId = document.getElementById('new-card-collection')?.value;
+        const front = document.getElementById('new-card-front')?.value?.trim();
+        const back = document.getElementById('new-card-back')?.value?.trim();
+        const reading = document.getElementById('new-card-reading')?.value?.trim();
+
+        if (!collectionId) {
+            this.showToast('Please choose a deck first.', 'error');
+            return;
+        }
+
+        if (!front || !back) {
+            this.showToast('Please fill in front and back for the card.', 'error');
+            return;
+        }
+
+        try {
+            await DataStore.addCard({ collectionId, front, back, reading });
+            this.closeModal();
+            this.showToast('Card created', 'success');
+
+            if (this.currentScreen === 'collection-detail') {
+                CollectionDetailScreen.render();
+            } else if (this.currentScreen === 'collections') {
+                CollectionsScreen.render();
+            } else if (this.currentScreen === 'home') {
+                HomeScreen.render();
+            }
+        } catch (error) {
+            console.error('Error creating card from modal:', error);
+            this.showToast('Failed to create card', 'error');
+        }
     },
 
     async createCollection(withAI = false) {
@@ -258,13 +360,13 @@ const app = {
 
             // Validate inputs - images cannot be used alone
             if (imageData && !audioData && !topic) {
-                this.showToast('Images cannot be used alone. Please provide text or audio.', 'error');
+                this.showToast('Add text or audio before using images.', 'error');
                 return;
             }
 
             // At least one input is required
             if (!topic && !audioData && !imageData) {
-                this.showToast('Please provide text, audio, or images to generate cards', 'error');
+                this.showToast('Please provide text, audio, or images to create a deck', 'error');
                 return;
             }
 
@@ -279,11 +381,11 @@ const app = {
 
             // Add placeholder card to collections screen
             const placeholderId = 'placeholder-' + Date.now();
-            this.showPlaceholderCollection(placeholderId, topic || 'AI Collection', emoji);
+            this.showPlaceholderCollection(placeholderId, topic || 'New Deck', emoji);
 
             try {
                 const user = DataStore.getUser();
-                this.showToast('Generating with AI...', 'info');
+                this.showToast('Creating deck...', 'info');
 
                 // Use multimodal API if audio or image is provided
                 const result = await GeminiService.generateCollectionMultimodal({
@@ -293,53 +395,33 @@ const app = {
                     image: imageData,
                     targetLanguage: user.targetLanguage,
                     nativeLanguage: user.nativeLanguage,
-                    cardCount: 10  // Default, but AI will extract from audio/text if specified
+                    cardCount: 10
                 });
 
                 // Clear multimodal data after use
                 this.recordedAudioData = null;
                 this.uploadedImageData = null;
 
-                console.log('Generated collection:', result);
-
-                // Create collection (AWAIT the async operation!)
                 const collection = await DataStore.addCollection({
                     name: result.name || topic,
                     emoji: result.emoji || emoji,
                     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
                 });
 
-                console.log('Collection created:', collection);
-
-                // Add cards (AWAIT each async operation!)
                 if (result.cards && result.cards.length > 0) {
-                    console.log(`Adding ${result.cards.length} cards...`);
-
-                    // Add cards sequentially to ensure they all save
-                    for (let i = 0; i < result.cards.length; i++) {
-                        const card = result.cards[i];
+                    for (const card of result.cards) {
                         try {
-                            const newCard = await DataStore.addCard({
-                                ...card,
-                                collectionId: collection.id
-                            });
-                            console.log(`Card ${i + 1}/${result.cards.length} added:`, newCard);
+                            await DataStore.addCard({ ...card, collectionId: collection.id });
                         } catch (cardError) {
-                            console.error(`Error adding card ${i + 1}:`, cardError);
+                            console.error('Error adding generated card:', cardError);
                         }
                     }
                 }
 
-                // Remove placeholder
                 this.removePlaceholderCollection(placeholderId);
-
-                // Verify cards were actually added
                 const savedCards = DataStore.getCards(collection.id);
-                console.log(`Verification: ${savedCards.length} cards in collection ${collection.id}`);
+                this.showToast(`Created "${result.name || name || 'New Deck'}" with ${savedCards.length} cards`, 'success');
 
-                this.showToast(`Created "${result.name}" with ${savedCards.length} cards!`, 'success');
-
-                // Refresh screen
                 if (this.currentScreen === 'collections') {
                     CollectionsScreen.render();
                 } else if (this.currentScreen === 'home') {
@@ -352,11 +434,11 @@ const app = {
             }
         } else {
             if (!name) {
-                this.showToast('Please enter a collection name', 'error');
+                this.showToast('Please enter a deck name', 'error');
                 return;
             }
 
-            const collection = DataStore.addCollection({
+            await DataStore.addCollection({
                 name,
                 emoji,
                 image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
@@ -365,7 +447,6 @@ const app = {
             this.closeModal();
             this.showToast(`Created "${name}"`, 'success');
 
-            // Refresh screen
             if (this.currentScreen === 'collections') {
                 CollectionsScreen.render();
             } else if (this.currentScreen === 'home') {
@@ -401,12 +482,12 @@ const app = {
             </div>
 
             <p class="text-sm text-gray-400 mb-4">
-                Enter your Google AI Studio API key to enable AI-powered features like dialogue generation and auto-translation.
+                Enter your Gemini API key to enable smart generation and audio features.
             </p>
 
             <div class="mb-4">
                 <a href="https://aistudio.google.com/apikey" target="_blank" class="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                    Get your API key from Google AI Studio
+                    Get your API key
                     <span class="material-symbols-outlined text-sm">open_in_new</span>
                 </a>
             </div>
@@ -581,7 +662,7 @@ const app = {
         }
     },
 
-    // Audio recording for AI (captures raw audio without transcription)
+    // Audio recording (captures raw audio without transcription)
     async toggleAudioRecording() {
         if (this.isRecording) {
             await this.stopAudioRecording();
@@ -811,7 +892,7 @@ const app = {
         }, 3000);
     },
 
-    // Placeholder collection card for AI generation
+    // Placeholder collection card for generation
     showPlaceholderCollection(id, topic, emoji = '✨') {
         // Only add placeholder if we're on collections screen
         if (this.currentScreen === 'collections') {

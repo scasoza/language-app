@@ -65,7 +65,7 @@ const SettingsScreen = {
                     <div class="bg-gradient-to-r ${apiConfigured ? 'from-primary to-emerald-400' : 'from-amber-500 to-orange-500'} p-4 rounded-xl shadow-lg flex items-center justify-between text-background-dark">
                         <div class="flex flex-col">
                             <span class="font-bold text-lg leading-tight">${apiConfigured ? 'API Connected' : 'Setup API Key'}</span>
-                            <span class="text-sm font-medium opacity-80">${apiConfigured ? 'Gemini AI features enabled' : 'Enable AI-powered features'}</span>
+                            <span class="text-sm font-medium opacity-80">${apiConfigured ? 'Smart features enabled' : 'Enable smart features'}</span>
                         </div>
                         <button onclick="app.showApiKeyModal()" class="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
                             <span class="material-symbols-outlined text-2xl">${apiConfigured ? 'check_circle' : 'key'}</span>
@@ -225,7 +225,7 @@ const SettingsScreen = {
                 <!-- Version Info -->
                 <div class="mt-8 text-center">
                     <p class="text-xs text-slate-400 dark:text-slate-600 font-medium">LinguaFlow v1.0.0</p>
-                    <p class="text-xs text-slate-400 dark:text-slate-600">Powered by Gemini AI</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-600">Powered by LinguaFlow</p>
                 </div>
             </main>
         `;

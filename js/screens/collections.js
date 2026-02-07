@@ -44,7 +44,7 @@ const CollectionsScreen = {
 
             <!-- Main Grid Content -->
             <main class="px-4 lg:px-8 py-4 w-full">
-                <!-- AI Quick Create Banner -->
+                <!-- Quick Create Banner -->
                 ${collections.length === 0 || this.filter === 'all' ? `
                     <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
                         <div class="flex items-start gap-3">
@@ -52,8 +52,8 @@ const CollectionsScreen = {
                                 <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-white mb-1">Create with AI</h3>
-                                <p class="text-xs text-slate-300 mb-3">Generate custom decks instantly with Gemini AI</p>
+                                <h3 class="text-sm font-bold text-white mb-1">Create faster</h3>
+                                <p class="text-xs text-slate-300 mb-3">Build decks from text, audio, or images in seconds</p>
                                 <button onclick="app.showCreateCollectionModal()" class="bg-primary text-background-dark px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
                                     <span class="material-symbols-outlined text-sm">flash_on</span>
                                     Generate Deck
@@ -107,10 +107,16 @@ const CollectionsScreen = {
         `).join('');
     },
 
+
     renderCollectionCard(col) {
-        const progress = col.cardCount > 0 ? Math.round((col.mastered / col.cardCount) * 100) : 0;
-        const progressText = progress === 0 ? 'Not started' : `${progress}% Mastered`;
-        const progressOpacity = progress >= 75 ? '' : progress >= 50 ? '/80' : progress > 0 ? '/60' : '';
+        const cards = DataStore.getCards(col.id);
+        const totalCards = cards.length || col.cardCount || 0;
+        const reviewedCards = cards.filter(card => (card.reviewCount || 0) > 0).length;
+        const masteredCards = cards.filter(card => (card.difficulty || 0) >= 3 && (card.reviewCount || 0) > 0).length;
+        const progress = totalCards > 0 ? Math.round((reviewedCards / totalCards) * 100) : 0;
+        const statusText = totalCards === 0
+            ? 'No cards yet'
+            : `${reviewedCards}/${totalCards} reviewed`;
 
         return `
             <button onclick="app.openCollection('${col.id}')" class="group relative flex flex-col justify-end overflow-hidden rounded-2xl bg-surface-dark aspect-[4/5] shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-white/5 hover:ring-primary/50 cursor-pointer text-left">
@@ -120,9 +126,9 @@ const CollectionsScreen = {
                     <div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent"></div>
                 </div>
 
-                <!-- Edit Button (on hover) -->
-                <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    <button onclick="event.stopPropagation(); app.editCollection('${col.id}')" class="h-8 w-8 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-primary hover:text-background-dark transition-colors">
+                <!-- Edit Button -->
+                <div class="absolute top-4 right-4 z-20">
+                    <button onclick="event.stopPropagation(); app.editCollection('${col.id}')" class="h-8 w-8 flex items-center justify-center rounded-full bg-black/45 backdrop-blur-md text-white hover:bg-primary hover:text-background-dark transition-colors">
                         <span class="material-symbols-outlined text-sm">edit</span>
                     </button>
                 </div>
@@ -134,12 +140,11 @@ const CollectionsScreen = {
                     </div>
                     <h3 class="text-lg font-bold text-white leading-tight mb-1">${col.name}</h3>
                     <div class="flex items-center justify-between text-xs text-gray-300 mb-3 font-medium">
-                        <span>${col.cardCount} Cards</span>
-                        <span class="text-primary${progressOpacity}">${progressText}</span>
+                        <span>${statusText}</span>
+                        <span class="text-primary/90">Mastered: ${masteredCards}</span>
                     </div>
-                    <!-- Progress Bar -->
                     <div class="h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
-                        <div class="h-full rounded-full bg-primary ${progress >= 85 ? 'shadow-[0_0_10px_rgba(13,242,128,0.5)]' : ''}" style="width: ${progress}%"></div>
+                        <div class="h-full rounded-full bg-primary" style="width: ${progress}%"></div>
                     </div>
                 </div>
             </button>
@@ -211,7 +216,7 @@ const CollectionsScreen = {
                     <span class="text-2xl">${emoji}</span>
                     <h3 class="font-bold text-base truncate">${topic}</h3>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Generating with AI...</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Generating deck...</p>
             </div>
         `;
 

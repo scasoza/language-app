@@ -28,7 +28,7 @@ const AuthScreen = {
                         <h1 class="text-3xl font-bold">
                             <span class="text-primary">Lingua</span><span class="text-white">Flow</span>
                         </h1>
-                        <p class="text-gray-400 mt-2">Master any language with AI</p>
+                        <p class="text-gray-400 mt-2">Master any language with smart study tools</p>
                     </div>
 
                     <!-- Auth Form -->
