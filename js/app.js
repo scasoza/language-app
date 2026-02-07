@@ -22,6 +22,10 @@ const app = {
         }
 
         await this.handleAuthenticatedSession();
+
+        if (!this.currentScreen) {
+            this.navigate('home');
+        }
     },
 
     navigate(screenId, addToHistory = true) {
@@ -96,12 +100,18 @@ const app = {
         // Update active state
         document.querySelectorAll('.nav-btn').forEach(btn => {
             const navScreen = btn.dataset.nav;
-            if (navScreen === screenId) {
-                btn.classList.remove('text-slate-400');
-                btn.classList.add('text-primary');
+            const isActive = navScreen === screenId;
+
+            btn.classList.toggle('text-primary', isActive);
+            btn.classList.toggle('bg-primary/10', isActive);
+
+            if (isActive) {
+                btn.classList.remove('text-slate-400', 'text-slate-500', 'dark:text-slate-300');
             } else {
-                btn.classList.remove('text-primary');
-                btn.classList.add('text-slate-400');
+                btn.classList.remove('bg-primary/10');
+                if (!btn.classList.contains('text-slate-400') && !btn.classList.contains('text-slate-500')) {
+                    btn.classList.add('text-slate-400');
+                }
             }
         });
     },
@@ -136,6 +146,10 @@ const app = {
         if (!DataStore.isOnboarded()) {
             this.navigate('onboarding');
         } else {
+            this.navigate('home');
+        }
+
+        if (!this.currentScreen || !document.querySelector('.screen.active')) {
             this.navigate('home');
         }
     },
@@ -194,19 +208,19 @@ const app = {
             <div class="space-y-4">
                 <div>
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Collection Name (Optional)</label>
-                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs (or let AI decide)" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div>
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji (Optional)</label>
-                    <input type="text" id="collection-emoji" placeholder="🇪🇸 (or let AI decide)" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
                 <div class="pt-2 border-t border-white/10">
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-bold text-primary">✨ Generate with AI</p>
+                        <p class="text-sm font-bold text-primary">✨ Build from prompt</p>
                         <div class="flex gap-2">
-                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio for AI">
+                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio">
                                 <span class="material-symbols-outlined text-primary text-xl">mic</span>
                             </button>
                             <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
@@ -273,11 +287,11 @@ const app = {
 
             // Add placeholder card to collections screen
             const placeholderId = 'placeholder-' + Date.now();
-            this.showPlaceholderCollection(placeholderId, topic || 'AI Collection', emoji);
+            this.showPlaceholderCollection(placeholderId, topic || 'New Collection', emoji);
 
             try {
                 const user = DataStore.getUser();
-                this.showToast('Generating with AI...', 'info');
+                this.showToast('Building your deck...', 'info');
 
                 // Use multimodal API if audio or image is provided
                 const result = await GeminiService.generateCollectionMultimodal({
@@ -395,12 +409,12 @@ const app = {
             </div>
 
             <p class="text-sm text-gray-400 mb-4">
-                Enter your Google AI Studio API key to enable AI-powered features like dialogue generation and auto-translation.
+                Enter your Google Gemini API key to enable advanced features like dialogue generation and auto-translation.
             </p>
 
             <div class="mb-4">
                 <a href="https://aistudio.google.com/apikey" target="_blank" class="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                    Get your API key from Google AI Studio
+                    Get your API key from Google Gemini
                     <span class="material-symbols-outlined text-sm">open_in_new</span>
                 </a>
             </div>
@@ -423,12 +437,16 @@ const app = {
         const input = document.getElementById('api-key-input');
         const key = input?.value?.trim();
 
-        if (key) {
-            // Save to GeminiService
-            GeminiService.API_KEY = key;
-            localStorage.setItem('gemini_api_key', key);
+        if (!key) {
+            this.showToast('Please enter an API key', 'error');
+            return;
+        }
 
-            // Also persist in user profile settings (syncs to Supabase)
+        try {
+            // Save to GeminiService and local cache first
+            GeminiService.setApiKey(key);
+
+            // Also persist in user profile settings (syncs to Supabase when available)
             const user = DataStore.getUser();
             await DataStore.updateUser({
                 settings: { ...user.settings, geminiApiKey: key }
@@ -439,8 +457,9 @@ const app = {
 
             // Refresh current screen
             this.renderScreen(this.currentScreen);
-        } else {
-            this.showToast('Please enter an API key', 'error');
+        } catch (error) {
+            console.error('Failed to save API key:', error);
+            this.showToast('Failed to save API key. Please try again.', 'error');
         }
     },
 
@@ -854,7 +873,7 @@ const app = {
             `;
         }).join('');
 
-        // Auto-scroll to bottom
+        // Smart-scroll to bottom
         debugOutput.scrollTop = debugOutput.scrollHeight;
     },
 

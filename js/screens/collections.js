@@ -14,7 +14,7 @@ const CollectionsScreen = {
             <!-- Sticky Header Section -->
             <header class="sticky top-0 z-50 w-full bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-black/5 dark:border-white/5 pb-2">
                 <!-- Top Bar -->
-                <div class="flex items-center justify-between px-4 pt-4 pb-2">
+                <div class="flex items-center justify-between px-4 lg:px-8 pt-4 pb-2 w-full">
                     <h1 class="text-3xl font-bold tracking-tight">Collections</h1>
                     <button onclick="app.navigate('settings')" class="rounded-full p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
                         <span class="material-symbols-outlined text-2xl">account_circle</span>
@@ -22,7 +22,7 @@ const CollectionsScreen = {
                 </div>
 
                 <!-- Search Bar -->
-                <div class="px-4 py-2">
+                <div class="px-4 lg:px-8 py-2 w-full">
                     <label class="group flex items-center w-full h-12 rounded-xl bg-white dark:bg-[#224936] px-3 shadow-sm focus-within:ring-2 focus-within:ring-primary/50 transition-all">
                         <span class="material-symbols-outlined text-slate-400 dark:text-[#90cbad]">search</span>
                         <input
@@ -37,14 +37,14 @@ const CollectionsScreen = {
                 </div>
 
                 <!-- Filter Chips -->
-                <div class="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar">
+                <div class="flex gap-2 px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar w-full">
                     ${this.renderFilterChips()}
                 </div>
             </header>
 
             <!-- Main Grid Content -->
-            <main class="px-4 py-4">
-                <!-- AI Quick Create Banner -->
+            <main class="px-4 lg:px-8 py-4 w-full">
+                <!-- Quick Create Banner -->
                 ${collections.length === 0 || this.filter === 'all' ? `
                     <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
                         <div class="flex items-start gap-3">
@@ -52,18 +52,18 @@ const CollectionsScreen = {
                                 <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-white mb-1">Create with AI</h3>
-                                <p class="text-xs text-slate-300 mb-3">Generate custom decks instantly with Gemini AI</p>
+                                <h3 class="text-sm font-bold text-white mb-1">Create with prompt</h3>
+                                <p class="text-xs text-slate-300 mb-3">Generate custom decks from text, audio, and images</p>
                                 <button onclick="app.showCreateCollectionModal()" class="bg-primary text-background-dark px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
                                     <span class="material-symbols-outlined text-sm">flash_on</span>
-                                    Generate Deck
+                                    Build Deck
                                 </button>
                             </div>
                         </div>
                     </div>
                 ` : ''}
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
                     ${collections.map(col => this.renderCollectionCard(col)).join('')}
 
                     <!-- Add New Collection Card -->
@@ -79,7 +79,7 @@ const CollectionsScreen = {
             </main>
 
             <!-- FAB -->
-            <div class="fixed bottom-24 right-4 z-40">
+            <div class="fixed bottom-24 right-6 z-40 lg:hidden">
                 <button onclick="app.showCreateCollectionModal()" class="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-[0_0_15px_rgba(13,242,128,0.4)] text-background-dark hover:scale-110 transition-transform duration-200 active:scale-95">
                     <span class="material-symbols-outlined text-3xl font-bold">add</span>
                 </button>
@@ -108,9 +108,14 @@ const CollectionsScreen = {
     },
 
     renderCollectionCard(col) {
-        const progress = col.cardCount > 0 ? Math.round((col.mastered / col.cardCount) * 100) : 0;
-        const progressText = progress === 0 ? 'Not started' : `${progress}% Mastered`;
-        const progressOpacity = progress >= 75 ? '' : progress >= 50 ? '/80' : progress > 0 ? '/60' : '';
+        const cards = DataStore.getCards(col.id);
+        const totalCards = cards.length;
+        const reviewedCards = cards.filter(c => (c.reviewCount || 0) > 0).length;
+        const dueCards = DataStore.getDueCards(col.id).length;
+        const reviewedPercent = totalCards > 0 ? Math.round((reviewedCards / totalCards) * 100) : 0;
+        const progressText = totalCards === 0
+            ? 'No cards yet'
+            : `${reviewedCards}/${totalCards} reviewed • ${dueCards} due`;
 
         return `
             <button onclick="app.openCollection('${col.id}')" class="group relative flex flex-col justify-end overflow-hidden rounded-2xl bg-surface-dark aspect-[4/5] shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-white/5 hover:ring-primary/50 cursor-pointer text-left">
@@ -134,12 +139,12 @@ const CollectionsScreen = {
                     </div>
                     <h3 class="text-lg font-bold text-white leading-tight mb-1">${col.name}</h3>
                     <div class="flex items-center justify-between text-xs text-gray-300 mb-3 font-medium">
-                        <span>${col.cardCount} Cards</span>
-                        <span class="text-primary${progressOpacity}">${progressText}</span>
+                        <span>${totalCards} Cards</span>
+                        <span class="text-primary/90">${progressText}</span>
                     </div>
                     <!-- Progress Bar -->
                     <div class="h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
-                        <div class="h-full rounded-full bg-primary ${progress >= 85 ? 'shadow-[0_0_10px_rgba(13,242,128,0.5)]' : ''}" style="width: ${progress}%"></div>
+                        <div class="h-full rounded-full bg-primary ${progress >= 85 ? 'shadow-[0_0_10px_rgba(13,242,128,0.5)]' : ''}" style="width: ${reviewedPercent}%"></div>
                     </div>
                 </div>
             </button>
@@ -211,7 +216,7 @@ const CollectionsScreen = {
                     <span class="text-2xl">${emoji}</span>
                     <h3 class="font-bold text-base truncate">${topic}</h3>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Generating with AI...</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Building deck...</p>
             </div>
         `;
 

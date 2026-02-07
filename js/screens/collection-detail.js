@@ -23,6 +23,7 @@ const CollectionDetailScreen = {
                     <button onclick="app.navigate('collections')" class="mt-4 px-6 py-2 bg-primary text-background-dark rounded-xl font-bold">
                         Back to Collections
                     </button>
+                    <button onclick="CollectionDetailScreen.editCollectionInfo()" class="bg-surface-dark border border-white/10 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-white/5">Edit Deck</button>
                 </div>
             `;
             return;
@@ -78,7 +79,7 @@ const CollectionDetailScreen = {
                 </div>
 
                 <!-- Main Action buttons -->
-                <div class="p-4 flex gap-3">
+                <div class="p-4 flex flex-wrap gap-3">
                     ${cards.length > 0 ? `
                         <button onclick="app.startStudySession('${collection.id}')" class="flex-1 bg-primary text-background-dark font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(13,242,128,0.3)] hover:scale-[1.02] transition-transform ${dueCards.length === 0 ? 'opacity-50' : ''}">
                             <span class="material-symbols-outlined text-2xl">play_arrow</span>
@@ -230,11 +231,11 @@ const CollectionDetailScreen = {
                 </button>
                 <button onclick="CollectionDetailScreen.generateMoreCards()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-primary">auto_awesome</span>
-                    <span>Generate More Cards with AI</span>
+                    <span>Generate More Cards</span>
                 </button>
-                <button onclick="CollectionDetailScreen.showAIEditModal()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
+                <button onclick="CollectionDetailScreen.showGuidedEditModal()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-primary">magic_button</span>
-                    <span>AI Edit Collection</span>
+                    <span>Guided Collection Edit</span>
                 </button>
                 <button onclick="CollectionDetailScreen.resetProgress()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-amber-400">restart_alt</span>
@@ -296,7 +297,7 @@ const CollectionDetailScreen = {
         }
 
         const collection = DataStore.getCollection(this.collectionId);
-        app.showLoadingOverlay('Generating cards...', 'Creating flashcards with AI');
+        app.showLoadingOverlay('Generating cards...', 'Creating flashcards');
 
         try {
             const user = DataStore.getUser();
@@ -357,12 +358,12 @@ const CollectionDetailScreen = {
         }
     },
 
-    showAIEditModal() {
+    showGuidedEditModal() {
         app.closeModal();
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">AI Edit Collection</h3>
+                <h3 class="text-lg font-bold">Guided Collection Edit</h3>
                 <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
                     <span class="material-symbols-outlined">close</span>
                 </button>
@@ -371,7 +372,7 @@ const CollectionDetailScreen = {
             <div class="space-y-4">
                 <div class="pt-2">
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-bold text-primary">✨ Multimodal AI Editing</p>
+                        <p class="text-sm font-bold text-primary">✨ Multimodal Editing</p>
                         <div class="flex gap-2">
                             <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio instructions">
                                 <span class="material-symbols-outlined text-primary text-xl">mic</span>
@@ -394,9 +395,9 @@ const CollectionDetailScreen = {
                     </div>
                 </div>
 
-                <button onclick="CollectionDetailScreen.processAIEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
+                <button onclick="CollectionDetailScreen.processGuidedEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
                     <span class="material-symbols-outlined text-xl">auto_awesome</span>
-                    Apply AI Changes
+                    Apply Changes
                 </button>
             </div>
         `);
@@ -536,7 +537,7 @@ const CollectionDetailScreen = {
         app.showToast('Image removed', 'info');
     },
 
-    async processAIEdit() {
+    async processGuidedEdit() {
         const instructions = document.getElementById('ai-edit-instructions')?.value?.trim();
         const audioData = this.editAudioData;
         const imageData = this.editImageData;
@@ -559,7 +560,7 @@ const CollectionDetailScreen = {
         }
 
         app.closeModal();
-        app.showLoadingOverlay('Processing AI edits...', 'Analyzing your collection');
+        app.showLoadingOverlay('Processing edits...', 'Analyzing your collection');
 
         try {
             const user = DataStore.getUser();
@@ -573,7 +574,7 @@ const CollectionDetailScreen = {
                 nativeLanguage: user.nativeLanguage
             });
 
-            console.log('AI edit result:', result);
+            console.log('Edit result:', result);
 
             // Apply changes based on AI response
             if (result.collectionUpdates && Object.keys(result.collectionUpdates).length > 0) {
@@ -610,7 +611,7 @@ const CollectionDetailScreen = {
             app.hideLoadingOverlay();
 
             const changeCount = (result.cards?.length || 0) + (result.removeCardIds?.length || 0);
-            app.showToast(`AI applied ${changeCount} change${changeCount !== 1 ? 's' : ''}!`, 'success');
+            app.showToast(`Applied ${changeCount} change${changeCount !== 1 ? 's' : ''}!`, 'success');
 
             this.render();
         } catch (error) {

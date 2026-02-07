@@ -17,6 +17,7 @@ const AddWordScreen = {
     isLoading: false,
     suggestions: [],
     presetCollectionId: null, // Set this before navigating to pre-select a collection
+    mode: 'card', // card | deck
 
     render() {
         const user = DataStore.getUser();
@@ -28,13 +29,18 @@ const AddWordScreen = {
         }
 
         const container = document.getElementById('screen-add-word');
+        if (this.mode === 'deck') {
+            this.renderDeckBuilder(container);
+            return;
+        }
+
         container.innerHTML = `
             <!-- Header -->
             <header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between">
                 <button onclick="app.goBack()" class="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
                     <span class="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">close</span>
                 </button>
-                <h1 class="text-lg font-bold tracking-tight">New Flashcard</h1>
+                <div class="flex items-center gap-2 rounded-full bg-slate-100 dark:bg-white/5 p-1"><button onclick="AddWordScreen.setMode('card')" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-background-dark">Card</button><button onclick="AddWordScreen.setMode('deck')" class="px-3 py-1 rounded-full text-xs font-semibold text-slate-500 dark:text-slate-300">Deck</button></div>
                 <button onclick="AddWordScreen.save()" class="bg-primary hover:bg-primary/90 text-background-dark px-4 py-1.5 rounded-full text-sm font-bold transition-colors shadow-[0_0_15px_rgba(13,242,128,0.3)] disabled:opacity-50" ${this.isLoading ? 'disabled' : ''}>
                     ${this.isLoading ? '<div class="spinner mx-2"></div>' : 'Save'}
                 </button>
@@ -175,7 +181,7 @@ const AddWordScreen = {
                     </div>
                 </section>
 
-                <!-- AI Generate Button -->
+                <!-- Auto Generate Button -->
                 <section class="mt-auto pt-4">
                     <button onclick="AddWordScreen.generateWithAI()" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white shadow-lg hover:scale-[1.02] transition-transform active:scale-[0.98] group ${this.isLoading ? 'opacity-50 pointer-events-none' : ''}">
                         <div class="flex items-center gap-3">
@@ -183,7 +189,7 @@ const AddWordScreen = {
                                 <span class="material-symbols-outlined">auto_awesome</span>
                             </div>
                             <div class="flex flex-col items-start">
-                                <span class="text-sm font-bold">Auto-fill with AI</span>
+                                <span class="text-sm font-bold">Auto-fill</span>
                                 <span class="text-xs text-white/70">Generate translation & examples</span>
                             </div>
                         </div>
@@ -201,7 +207,7 @@ const AddWordScreen = {
         if (value.length >= 2) {
             this.suggestions = [
                 { type: 'translate', icon: 'translate', label: `Translate: ${value}` },
-                { type: 'audio', icon: 'volume_up', label: 'Auto-Audio' }
+                { type: 'audio', icon: 'volume_up', label: 'Audio' }
             ];
         } else {
             this.suggestions = [];
@@ -267,7 +273,7 @@ const AddWordScreen = {
                 this.formData.example = card.example || '';
                 this.formData.exampleReading = card.exampleReading || '';
                 this.formData.exampleTranslation = card.exampleTranslation || '';
-                app.showToast('Generated with AI!', 'success');
+                app.showToast('Generated!', 'success');
             }
         } catch (error) {
             app.showToast(error.message, 'error');
@@ -376,6 +382,57 @@ const AddWordScreen = {
         }
     },
 
+
+    setMode(mode) {
+        this.mode = mode;
+        this.render();
+    },
+
+    renderDeckBuilder(container) {
+        container.innerHTML = `
+            <header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between">
+                <button onclick="app.goBack()" class="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                    <span class="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">close</span>
+                </button>
+                <div class="flex items-center gap-2 rounded-full bg-slate-100 dark:bg-white/5 p-1"><button onclick="AddWordScreen.setMode('card')" class="px-3 py-1 rounded-full text-xs font-semibold text-slate-500 dark:text-slate-300">Card</button><button onclick="AddWordScreen.setMode('deck')" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-background-dark">Deck</button></div>
+                <button onclick="app.createCollection(true)" class="bg-primary hover:bg-primary/90 text-background-dark px-4 py-1.5 rounded-full text-sm font-bold transition-colors shadow-[0_0_15px_rgba(13,242,128,0.3)]">Create</button>
+            </header>
+
+            <main class="flex-1 w-full max-w-3xl mx-auto p-4 flex flex-col gap-5 overflow-y-auto pb-10">
+                <div class="rounded-2xl border border-slate-200 dark:border-white/10 bg-surface-light dark:bg-surface-dark p-4 space-y-4">
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Describe what you want to learn. You can combine text, voice and images.</p>
+                    <div>
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Deck Name (optional)</label>
+                        <input id="collection-name" type="text" placeholder="e.g., Travel Chinese" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji (optional)</label>
+                        <input id="collection-emoji" type="text" placeholder="✈️" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Prompt</label>
+                        <textarea id="collection-topic" rows="4" placeholder="I want 20 cards for ordering food in Mandarin" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 resize-none"></textarea>
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Images require text or voice context.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20" title="Record audio">
+                            <span class="material-symbols-outlined text-primary text-xl">mic</span>
+                        </button>
+                        <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20" title="Upload image">
+                            <span class="material-symbols-outlined text-primary text-xl">image</span>
+                        </button>
+                        <input type="file" id="ai-image-input" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)" />
+                    </div>
+                    <div id="multimodal-preview" class="mt-2 flex flex-wrap gap-2"></div>
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <button onclick="app.createCollection(false)" class="w-full bg-surface-dark border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/5">Create Empty Deck</button>
+                        <button onclick="app.createCollection(true)" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl">Generate Deck</button>
+                    </div>
+                </div>
+            </main>
+        `;
+    },
+
     reset() {
         this.formData = {
             front: '',
@@ -391,6 +448,7 @@ const AddWordScreen = {
         this.suggestions = [];
         this.isLoading = false;
         this.presetCollectionId = null;
+        this.mode = 'card';
     }
 };
 

@@ -130,14 +130,19 @@ const DataStore = {
     async updateUser(updates) {
         this.user = { ...this.getUser(), ...updates };
 
+        // Always keep a local copy so settings (e.g. API key) survive transient sync failures.
+        this.saveToLocalStorage();
+
         if (this.canUseSupabase()) {
             try {
-                await SupabaseService.upsertProfile(this.user);
+                const syncedProfile = await SupabaseService.upsertProfile(this.user);
+                if (syncedProfile) {
+                    this.user = { ...this.user, ...syncedProfile };
+                    this.saveToLocalStorage();
+                }
             } catch (error) {
                 console.error('Error syncing profile to Supabase:', error);
             }
-        } else {
-            this.saveToLocalStorage();
         }
 
         return this.user;
