@@ -96,12 +96,18 @@ const app = {
         // Update active state
         document.querySelectorAll('.nav-btn').forEach(btn => {
             const navScreen = btn.dataset.nav;
-            if (navScreen === screenId) {
-                btn.classList.remove('text-slate-400');
-                btn.classList.add('text-primary');
+            const isActive = navScreen === screenId;
+
+            btn.classList.toggle('text-primary', isActive);
+            btn.classList.toggle('bg-primary/10', isActive);
+
+            if (isActive) {
+                btn.classList.remove('text-slate-400', 'text-slate-500', 'dark:text-slate-300');
             } else {
-                btn.classList.remove('text-primary');
-                btn.classList.add('text-slate-400');
+                btn.classList.remove('bg-primary/10');
+                if (!btn.classList.contains('text-slate-400') && !btn.classList.contains('text-slate-500')) {
+                    btn.classList.add('text-slate-400');
+                }
             }
         });
     },
