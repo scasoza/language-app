@@ -261,6 +261,9 @@ Provide a concise, clear answer. If the question is unrelated to the card, say s
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
         const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+        const pinyinQualityRule = isChinese
+            ? '\nPinyin quality rule: for Chinese output, provide exactly one pinyin syllable per Chinese character (Hanzi), in the same order, separated by spaces. Keep punctuation aligned with the sentence, and do not merge syllables.'
+            : '';
 
         const prompt = `You are a language learning expert. Generate ${count} flashcards for learning ${targetLanguage} from ${nativeLanguage}.
 
@@ -271,7 +274,7 @@ For each flashcard, provide:
 2. back: The translation in ${nativeLanguage}
 3. reading: ${readingGuide} pronunciation guide
 4. example: An example sentence using the word in ${targetLanguage}
-5. exampleTranslation: Translation of the example sentence${isChinese ? '\n6. exampleReading: Pinyin for the example sentence' : ''}
+5. exampleTranslation: Translation of the example sentence${isChinese ? '\n6. exampleReading: Pinyin for the example sentence' : ''}${pinyinQualityRule}
 
 Respond ONLY with a valid JSON array of flashcard objects. No markdown, no explanation.
 
@@ -332,6 +335,9 @@ Example format:
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
         const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+        const pinyinQualityRule = isChinese
+            ? '\nPinyin quality rule: for Chinese output, provide exactly one pinyin syllable per Chinese character (Hanzi), in the same order, separated by spaces. Keep punctuation aligned with the sentence, and do not merge syllables.'
+            : '';
 
         // Build dynamic prompt based on available inputs
         let inputDescription = '';
@@ -358,7 +364,7 @@ Generate a collection with:
    - back: translation in ${nativeLanguage}
    - reading: ${readingGuide} pronunciation guide
    - example: example sentence in ${targetLanguage}
-   - exampleTranslation: translated example in ${nativeLanguage}${isChinese ? '\n   - exampleReading: pinyin for the example sentence' : ''}
+   - exampleTranslation: translated example in ${nativeLanguage}${isChinese ? '\n   - exampleReading: pinyin for the example sentence' : ''}${pinyinQualityRule}
 
 Respond ONLY with valid JSON. No markdown, no explanation.
 
@@ -761,6 +767,9 @@ Text: "${text}"`;
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
         const readingGuide = isChinese ? 'pinyin' : 'phonetic';
+        const pinyinQualityRule = isChinese
+            ? '\nPinyin quality rule: for Chinese output, provide exactly one pinyin syllable per Chinese character (Hanzi), in the same order, separated by spaces. Keep punctuation aligned with the sentence, and do not merge syllables.'
+            : '';
 
         // Build prompt with instructions
         let inputDescription = '';
@@ -789,7 +798,7 @@ Provide a response with:
 2. cardCount: Number of cards affected (if applicable)
 3. cards: Array of new/modified cards (only if adding or modifying), each with:
    - front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
-   - If modifying, include: cardId (from existing cards)
+   - If modifying, include: cardId (from existing cards)${pinyinQualityRule}
 4. removeCardIds: Array of card IDs to remove (only if removing)
 5. collectionUpdates: Object with any collection-level changes (name, emoji, description)
 

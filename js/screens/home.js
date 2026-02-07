@@ -102,17 +102,7 @@ const HomeScreen = {
                 </div>
                 <div class="flex overflow-x-auto no-scrollbar pb-4 pl-4 gap-4 snap-x">
                     ${collections.map(col => this.renderCollectionCard(col)).join('')}
-
-                    <!-- Add New Collection Card -->
-                    <button onclick="app.showCreateCollectionModal()" class="snap-start shrink-0 w-60 rounded-xl bg-surface-light dark:bg-surface-dark border-2 border-dashed border-slate-300 dark:border-white/10 overflow-hidden flex flex-col items-center justify-center h-[180px] hover:border-primary transition-colors group">
-                        <div class="flex flex-col items-center gap-2">
-                            <div class="size-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                <span class="material-symbols-outlined text-primary text-2xl">add</span>
-                            </div>
-                            <span class="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors">Create Collection</span>
-                        </div>
-                    </button>
-                </div>
+</div>
             </section>
         `;
         } catch (error) {

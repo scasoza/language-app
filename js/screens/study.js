@@ -20,6 +20,9 @@ const StudyScreen = {
     isPlayingExampleAudio: false,
     playbackSpeed: 1.0, // 1.0 = normal, 0.75 = slower, 0.5 = very slow
     isPlayingWordAudio: false,
+    wordAudioCache: {},
+    preloadedCardId: null,
+    maxWordPreload: 4,
 
     init(collectionId = null, studyAll = false) {
         console.log('StudyScreen.init() called with collectionId:', collectionId);
@@ -115,15 +118,34 @@ const StudyScreen = {
             .replace(/'/g, '&#39;');
     },
 
+    tokenizePinyin(reading) {
+        if (!reading) return [];
+
+        return reading
+            .replace(/[()（）]/g, ' ')
+            .replace(/[，。！？,.!?;:]/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+    },
+
+    countChineseCharacters(text) {
+        if (!text) return 0;
+        return (text.match(/[一-鿿]/g) || []).length;
+    },
+
     renderPinyin(text, reading) {
         if (!text) return '';
         if (!reading) return this.escapeHtml(text);
 
-        const tokens = reading
-            .trim()
-            .split(/\s+/)
-            .map(token => token.replace(/[，。！？,.!?]/g, ''))
-            .filter(Boolean);
+        const tokens = this.tokenizePinyin(reading);
+        const chineseCharCount = this.countChineseCharacters(text);
+
+        // If counts do not match, still show pinyin as a whole-term annotation
+        // so multi-character words like "谢谢" with reading "xièxie" remain readable.
+        if (tokens.length !== chineseCharCount) {
+            return `<ruby class="inline-flex flex-col items-center leading-tight"><span>${this.escapeHtml(text)}</span><rt class="text-xs text-slate-400">${this.escapeHtml(reading)}</rt></ruby>`;
+        }
 
         let tokenIndex = 0;
         return Array.from(text).map(char => {
@@ -132,7 +154,7 @@ const StudyScreen = {
             }
 
             const escapedChar = this.escapeHtml(char);
-            if (/[\u4E00-\u9FFF]/.test(char) && tokenIndex < tokens.length) {
+            if (/[一-鿿]/.test(char) && tokenIndex < tokens.length) {
                 const escapedReading = this.escapeHtml(tokens[tokenIndex]);
                 tokenIndex += 1;
                 return `
@@ -171,8 +193,14 @@ const StudyScreen = {
             }
 
             const collection = DataStore.getCollection(card.collectionId);
-            const frontMarkup = this.renderPinyin(card.front, card.reading);
-            const exampleMarkup = card.example ? this.renderPinyin(card.example, card.exampleReading) : '';
+            const frontMarkup = this.isChinese(card.front)
+                ? this.generatePinyinRuby(card.front, card.reading, true)
+                : this.makeTextClickable(card.front);
+            const exampleMarkup = card.example
+                ? (this.isChinese(card.example)
+                    ? this.generatePinyinRuby(card.example, card.exampleReading || card.reading, true)
+                    : this.makeTextClickable(card.example))
+                : '';
             const progress = ((this.currentIndex + 1) / this.cards.length) * 100;
             const questions = Array.isArray(card.questions) ? card.questions : [];
             const formatQaText = (text) => this.escapeHtml(text || '').replace(/\n/g, '<br>');
@@ -272,10 +300,6 @@ const StudyScreen = {
                                         <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group" title="Replay audio">
                                             <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
                                         </button>
-                                        <!-- Hidden for MVP -->
-                                        <button hidden onclick="event.stopPropagation(); StudyScreen.showGrammarBreakdown()" class="size-10 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Grammar breakdown">
-                                            <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark">school</span>
-                                        </button>
                                     </div>
 
                                     <!-- Context Sentence -->
@@ -369,6 +393,7 @@ const StudyScreen = {
                 <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[100px] opacity-50 mix-blend-screen"></div>
             </div>
         `;
+            this.smartPrefetchPronunciations(card);
         } catch (error) {
             console.error('Error rendering study card:', error);
             // Show error state instead of green screen
@@ -593,6 +618,60 @@ const StudyScreen = {
         this.render();
     },
 
+
+    getSpeechStyleInstruction() {
+        if (this.playbackSpeed <= 0.5) return 'Speak very slowly, clearly, with pauses between words.';
+        if (this.playbackSpeed < 1.0) return 'Speak slowly and clearly.';
+        return '';
+    },
+
+    async generateSpeechAudio(text, targetLanguage, styleInstruction = '') {
+        if (!text) return null;
+
+        if (styleInstruction) {
+            return GeminiService.generateTTS(text.trim(), 'Kore', styleInstruction);
+        }
+
+        try {
+            return await GeminiService.generateCloudTTS(text.trim(), targetLanguage);
+        } catch (cloudError) {
+            return GeminiService.generateTTS(text.trim());
+        }
+    },
+
+    extractPronunciationTokens(text) {
+        if (!text) return [];
+        if (this.isChinese(text)) {
+            return Array.from(text).filter(ch => /[一-鿿]/.test(ch));
+        }
+        return text.match(/[\p{L}\p{N}'-]+/gu) || [];
+    },
+
+    async smartPrefetchPronunciations(card) {
+        if (!card || !GeminiService.isConfigured()) return;
+        if (this.preloadedCardId === card.id) return;
+
+        this.preloadedCardId = card.id;
+        const collection = DataStore.getCollection(card.collectionId);
+        const user = DataStore.getUser();
+        const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+
+        const candidates = [card.front, ...(this.extractPronunciationTokens(card.example || '').slice(0, this.maxWordPreload))]
+            .filter(Boolean)
+            .slice(0, this.maxWordPreload + 1);
+
+        for (const text of candidates) {
+            const key = `${targetLanguage}:${text}`;
+            if (this.wordAudioCache[key]) continue;
+            try {
+                const audioData = await this.generateSpeechAudio(text, targetLanguage);
+                if (audioData) this.wordAudioCache[key] = audioData;
+            } catch (error) {
+                console.warn('Prefetch skipped for token:', text, error);
+            }
+        }
+    },
+
     async playAudio() {
         // Prevent overlapping audio playback
         if (this.isPlayingAudio) {
@@ -600,6 +679,8 @@ const StudyScreen = {
             return;
         }
 
+        let keepPlayingLock = false;
+        const styleInstruction = this.getSpeechStyleInstruction();
         const card = this.cards[this.currentIndex];
         if (!card) {
             console.error('No card available for audio playback');
@@ -614,7 +695,7 @@ const StudyScreen = {
         this.isPlayingAudio = true;
 
         try {
-            let audioData = card.audio;
+            let audioData = styleInstruction ? card.audioSlow : card.audio;
 
             // Generate TTS if no audio exists
             if (!audioData) {
@@ -640,7 +721,7 @@ const StudyScreen = {
 
                     try {
                         audioData = await Promise.race([
-                            GeminiService.generateCloudTTS(card.front, targetLanguage),
+                            this.generateSpeechAudio(card.front, targetLanguage, styleInstruction),
                             timeoutPromise
                         ]);
                     } catch (cloudError) {
@@ -655,7 +736,7 @@ const StudyScreen = {
                             );
 
                             audioData = await Promise.race([
-                                GeminiService.generateTTS(card.front),
+                                this.generateSpeechAudio(card.front, targetLanguage, styleInstruction),
                                 geminiTimeout
                             ]);
                         } else {
@@ -670,8 +751,12 @@ const StudyScreen = {
                     console.log(`✅ TTS generated successfully, audio data length: ${audioData.length}`);
 
                     // Save audio to card for future use
-                    await DataStore.updateCard(card.id, { audio: audioData });
-                    card.audio = audioData;
+                    await DataStore.updateCard(card.id, styleInstruction ? { audioSlow: audioData } : { audio: audioData });
+                    if (styleInstruction) {
+                        card.audioSlow = audioData;
+                    } else {
+                        card.audio = audioData;
+                    }
                     console.log('💾 Audio saved to card');
                     app.showToast('Pronunciation ready!', 'success');
 
@@ -698,7 +783,7 @@ const StudyScreen = {
                 console.log(`▶️ Playing audio at ${this.playbackSpeed}x speed...`);
                 const audio = new Audio(audioData);
                 audio.volume = 1.0;
-                audio.playbackRate = this.playbackSpeed; // Apply playback speed
+                audio.playbackRate = 1.0;
 
                 // Reset flag when audio ends or on error
                 audio.addEventListener('ended', () => {
@@ -717,6 +802,7 @@ const StudyScreen = {
                     this.isPlayingAudio = false;
                 });
 
+                keepPlayingLock = true;
                 console.log('✅ Audio playing');
             } else {
                 console.warn('⚠️ No audio data available after generation attempt');
@@ -726,16 +812,14 @@ const StudyScreen = {
             console.error('❌ Unexpected error in playAudio():', error);
             app.showToast(`Audio error: ${error.message}`, 'error');
             this.isPlayingAudio = false;
+        } finally {
+            if (!keepPlayingLock) {
+                this.isPlayingAudio = false;
+            }
         }
     },
 
     async playExampleAudio() {
-        // Prevent overlapping audio playback
-        if (this.isPlayingExampleAudio) {
-            console.log('⏸️ Example audio already playing, ignoring request');
-            return;
-        }
-
         const card = this.cards[this.currentIndex];
         if (!card || !card.example) {
             console.error('No example available for audio playback');
@@ -747,10 +831,9 @@ const StudyScreen = {
         console.log(`   - API configured: ${GeminiService.isConfigured()}`);
         console.log(`   - API key: ${GeminiService.getApiKey() ? GeminiService.getApiKey().substring(0, 10) + '...' : 'NOT SET'}`);
 
-        this.isPlayingExampleAudio = true;
-
         try {
-            let audioData = card.exampleAudio;
+            const styleInstruction = this.getSpeechStyleInstruction();
+            let audioData = styleInstruction ? card.exampleAudioSlow : card.exampleAudio;
 
             // Generate TTS if no audio exists
             if (!audioData) {
@@ -776,7 +859,7 @@ const StudyScreen = {
 
                     try {
                         audioData = await Promise.race([
-                            GeminiService.generateCloudTTS(card.example, targetLanguage),
+                            this.generateSpeechAudio(card.example, targetLanguage, styleInstruction),
                             timeoutPromise
                         ]);
                     } catch (cloudError) {
@@ -791,7 +874,7 @@ const StudyScreen = {
                             );
 
                             audioData = await Promise.race([
-                                GeminiService.generateTTS(card.example),
+                                this.generateSpeechAudio(card.example, targetLanguage, styleInstruction),
                                 geminiTimeout
                             ]);
                         } else {
@@ -806,134 +889,12 @@ const StudyScreen = {
                     console.log(`✅ Example TTS generated successfully, audio data length: ${audioData.length}`);
 
                     // Save audio to card for future use
-                    await DataStore.updateCard(card.id, { exampleAudio: audioData });
-                    card.exampleAudio = audioData;
-                    console.log('💾 Example audio saved to card');
-                    app.showToast('Example pronunciation ready!', 'success');
-
-                } catch (genError) {
-                    if (genError.message === 'Timeout') {
-                        console.error('❌ Example TTS generation timed out');
-                        app.showToast('Audio generation timed out. Please try again.', 'error');
-                    } else if (genError.message.includes('API key')) {
-                        console.error('❌ API key error:', genError);
-                        app.showToast('API key issue. Please check your settings.', 'error');
+                    await DataStore.updateCard(card.id, styleInstruction ? { exampleAudioSlow: audioData } : { exampleAudio: audioData });
+                    if (styleInstruction) {
+                        card.exampleAudioSlow = audioData;
                     } else {
-                        console.error('❌ Example TTS generation failed:', genError);
-                        app.showToast('Failed to generate example audio. Try again later.', 'error');
+                        card.exampleAudio = audioData;
                     }
-                    return;
-                }
-            }
-
-            // Play audio if available
-            if (audioData) {
-                try {
-                    const audio = new Audio(audioData);
-                    audio.playbackRate = this.playbackSpeed; // Apply playback speed
-
-                    // Reset flag when audio ends or on error
-                    audio.addEventListener('ended', () => {
-                        this.isPlayingExampleAudio = false;
-                        console.log('✅ Example audio playback completed');
-                    });
-
-                    audio.addEventListener('error', () => {
-                        this.isPlayingExampleAudio = false;
-                        console.error('❌ Example audio playback error');
-                    });
-
-                    await audio.play().catch(e => {
-                        console.error('Failed to play example audio:', e);
-                        app.showToast('Failed to play audio', 'error');
-                        this.isPlayingExampleAudio = false;
-                    });
-                } catch (playError) {
-                    console.error('Failed to play example audio:', playError);
-                    app.showToast('Failed to play audio', 'error');
-                    this.isPlayingExampleAudio = false;
-                }
-            } else {
-                this.isPlayingExampleAudio = false;
-            }
-        } catch (error) {
-            console.error('Error playing example audio:', error);
-            app.showToast('Audio playback error', 'error');
-            this.isPlayingExampleAudio = false;
-        }
-    },
-
-    async playExampleAudio() {
-        const card = this.cards[this.currentIndex];
-        if (!card || !card.example) {
-            console.error('No example available for audio playback');
-            return;
-        }
-
-        console.log(`🔊 playExampleAudio() called for card: "${card.front}"`);
-        console.log(`   - Has cached example audio: ${!!card.exampleAudio}`);
-        console.log(`   - API configured: ${GeminiService.isConfigured()}`);
-        console.log(`   - API key: ${GeminiService.getApiKey() ? GeminiService.getApiKey().substring(0, 10) + '...' : 'NOT SET'}`);
-
-        try {
-            let audioData = card.exampleAudio;
-
-            // Generate TTS if no audio exists
-            if (!audioData) {
-                if (!GeminiService.isConfigured()) {
-                    app.showToast('Configure Gemini API key in Settings to enable audio', 'error');
-                    return;
-                }
-
-                app.showToast('Generating example audio...', 'info');
-                console.log(`🎙️ Generating example TTS for: "${card.example}"`);
-
-                // Get target language for proper voice selection
-                const collection = DataStore.getCollection(card.collectionId);
-                const user = DataStore.getUser();
-                const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
-
-                try {
-                    // Try Cloud TTS first (more reliable, language-specific)
-                    // Timeout: 10 seconds (Cloud TTS is faster than Gemini)
-                    const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Timeout')), 10000)
-                    );
-
-                    try {
-                        audioData = await Promise.race([
-                            GeminiService.generateCloudTTS(card.example, targetLanguage),
-                            timeoutPromise
-                        ]);
-                    } catch (cloudError) {
-                        // If Cloud TTS fails (403/404) or Supabase not configured, fall back to Gemini TTS
-                        if (cloudError.message && (cloudError.message.includes('403') || cloudError.message.includes('404') || cloudError.message.includes('not configured'))) {
-                            console.warn('⚠️ Cloud TTS not available, falling back to Gemini TTS');
-                            app.showToast('Using Gemini TTS', 'info');
-
-                            // Fallback to Gemini TTS with retry logic
-                            const geminiTimeout = new Promise((_, reject) =>
-                                setTimeout(() => reject(new Error('Timeout')), 20000)
-                            );
-
-                            audioData = await Promise.race([
-                                GeminiService.generateTTS(card.example),
-                                geminiTimeout
-                            ]);
-                        } else {
-                            throw cloudError;
-                        }
-                    }
-
-                    if (!audioData) {
-                        throw new Error('API returned empty audio data');
-                    }
-
-                    console.log(`✅ Example TTS generated successfully, audio data length: ${audioData.length}`);
-
-                    // Save audio to card for future use
-                    await DataStore.updateCard(card.id, { exampleAudio: audioData });
-                    card.exampleAudio = audioData;
                     console.log('💾 Example audio saved to card');
                     app.showToast('Example pronunciation ready!', 'success');
 
@@ -1004,18 +965,19 @@ const StudyScreen = {
             console.log(`🔊 Generating TTS for word: "${word}"`);
 
             // Generate TTS for the word
-            let audioData;
-            try {
-                audioData = await GeminiService.generateCloudTTS(word.trim(), targetLanguage);
-            } catch (cloudError) {
-                console.warn('⚠️ Cloud TTS failed, falling back to Gemini TTS');
-                audioData = await GeminiService.generateTTS(word.trim());
+            const styleInstruction = this.getSpeechStyleInstruction();
+            const cacheKey = `${targetLanguage}:${word.trim()}:${styleInstruction || 'normal'}`;
+            let audioData = this.wordAudioCache[cacheKey];
+
+            if (!audioData) {
+                audioData = await this.generateSpeechAudio(word.trim(), targetLanguage, styleInstruction);
+                if (audioData) this.wordAudioCache[cacheKey] = audioData;
             }
 
             if (audioData) {
                 const audio = new Audio(audioData);
                 audio.volume = 1.0;
-                audio.playbackRate = this.playbackSpeed;
+                audio.playbackRate = 1.0;
 
                 audio.addEventListener('ended', () => {
                     this.isPlayingWordAudio = false;
@@ -1159,23 +1121,14 @@ const StudyScreen = {
     generatePinyinRuby(chineseText, pinyinText, makeClickable = false) {
         if (!chineseText || !pinyinText) return chineseText;
 
-        // Remove parentheses from pinyin if present
-        const cleanPinyin = pinyinText.replace(/[()（）]/g, '').trim();
-
-        // Split pinyin by spaces
-        const pinyinSyllables = cleanPinyin.split(/\s+/);
+        const pinyinSyllables = this.tokenizePinyin(pinyinText);
 
         // Split Chinese text into characters, grouping common multi-character words
         const chineseChars = this.segmentChinese(chineseText);
 
-        // If counts don't match, try simple character-by-character
+        // If counts don't match, keep pinyin visible as a whole-term annotation.
         if (pinyinSyllables.length !== chineseChars.length) {
-            // Fall back to character-by-character if mismatch
-            const chars = chineseText.split('');
-            // If still mismatch, just return plain text with pinyin below
-            if (pinyinSyllables.length < chars.length) {
-                return chineseText;
-            }
+            return `<ruby>${this.escapeHtml(chineseText)}<rt class="text-sm font-normal">${this.escapeHtml(pinyinText)}</rt></ruby>`;
         }
 
         // Build ruby HTML with optional click handlers
