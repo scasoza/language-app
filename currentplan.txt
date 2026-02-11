@@ -1,0 +1,55 @@
+Windows-Style Parody Hotel Manager - Implementation Plan
+
+1) Core Vision
+- Build a fast, cute, parody "hotel operations desktop" game inspired by retro office software aesthetics (without copying any real product branding).
+- The game should feel addictive through short loops, satisfying feedback, escalating challenge, and clear progression.
+
+2) Theme + Art Direction
+- Faux desktop OS frame: title bar, taskbar, draggable-looking windows (static mock style), pixel-ish icons, cheerful palette.
+- Main app window name: "TOTVS-ish Hotel Ops 98" parody feel (generic wording, no protected marks/logos).
+- Cute style: rounded cards, pastel guests, playful emojis, animated hearts/stars when guests are happy.
+
+3) Gameplay Loop (High Engagement)
+- Every "day" lasts ~45 seconds.
+- Guests spawn with needs: Clean Room, Fast Check-in, Snack, Decor Preference.
+- Player spends actions/resources to satisfy needs quickly.
+- Happy guests increase combo meter and tips; unhappy guests reduce reputation.
+- End-of-day summary gives coins, stars, and unlock points.
+
+4) Systems
+- Resources: Coins, Staff Energy, Supplies.
+- Metrics: Reputation (0-100), Occupancy, Combo Multiplier, Day number.
+- Upgrades shop between days:
+  - Faster Reception
+  - Better Housekeeping
+  - Snack Cart Plus
+  - Cute Decor Pack
+- Difficulty scales each day by spawn rate + need complexity.
+
+5) UI Structure
+- Desktop background with icons and taskbar clock.
+- Main window sections:
+  A) Header KPIs
+  B) Guest Queue (cards with timers)
+  C) Action Panel (buttons for service actions)
+  D) Upgrades Panel
+  E) Event Log (positive reinforcement text)
+- Floating toasts for rewards/combo streak.
+
+6) Technical Approach
+- Single-page HTML + lightweight CSS + vanilla JS for max speed.
+- Use requestAnimationFrame/setInterval minimally.
+- Keep DOM updates batched and small.
+- No heavy frameworks.
+
+7) Milestones
+- M1: Build static desktop mockup shell.
+- M2: Implement core guest lifecycle + timers.
+- M3: Implement action effects, scoring, combo, and difficulty scaling.
+- M4: Add upgrades and day transitions.
+- M5: Polish with animations, sounds-free haptics-like visual feedback.
+
+8) Validation
+- Manual playtest: ensure responsiveness and no UI freeze.
+- Verify progression and increasing challenge over first 5 in-game days.
+- Confirm parody naming and unique non-infringing visuals.

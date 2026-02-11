@@ -1,305 +1,253 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
-    <title>LinguaFlow - Language Learning</title>
-
-    <!-- Fonts and Icons -->
-    <link href="https://fonts.googleapis.com" rel="preconnect"/>
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-
-    <!-- Theme Configuration -->
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#0df280",
-                        "primary-dark": "#0abf63",
-                        "background-light": "#f5f8f7",
-                        "background-dark": "#102219",
-                        "surface-dark": "#183426",
-                        "surface-light": "#ffffff",
-                        "card-dark": "#1a3528",
-                        "accent-gray": "#2A4035"
-                    },
-                    fontFamily: {
-                        "display": ["Lexend", "sans-serif"],
-                        "body": ["Noto Sans", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "2xl": "1rem",
-                        "3xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                    boxShadow: {
-                        'neon': '0 0 15px rgba(13, 242, 128, 0.2)',
-                        'neon-hover': '0 0 25px rgba(13, 242, 128, 0.4)',
-                    }
-                },
-            },
-        }
-    </script>
-
-    <style>
-        /* Hide scrollbar */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Material symbols filled */
-        .material-symbols-outlined.filled {
-            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-
-        /* Range slider styling */
-        input[type=range] { -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px; width: 20px;
-            border-radius: 50%;
-            background: #0df280;
-            cursor: pointer;
-            margin-top: -8px;
-            box-shadow: 0 0 10px rgba(13, 242, 128, 0.5);
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 4px;
-            cursor: pointer;
-            background: #2a4035;
-            border-radius: 2px;
-        }
-
-        /* Screen transitions */
-        .screen { display: none; }
-        .screen.active { display: flex; }
-
-        /* Glass panel effect */
-        .glass-panel {
-            background: rgba(24, 52, 38, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-
-        /* Loading spinner */
-        .spinner {
-            border: 3px solid rgba(13, 242, 128, 0.2);
-            border-top: 3px solid #0df280;
-            border-radius: 50%;
-            width: 24px; height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Pulse animation */
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 15px rgba(13, 242, 128, 0.3); }
-            50% { box-shadow: 0 0 25px rgba(13, 242, 128, 0.6); }
-        }
-        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
-
-        /* Pinyin ruby styling */
-        .pinyin-ruby {
-            display: inline-block;
-            text-align: center;
-            vertical-align: bottom;
-            margin: 0 1px;
-        }
-        ruby {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0 4px;
-        }
-        rt {
-            font-size: 0.7rem;
-            line-height: 1.2;
-            margin-top: 2px;
-            white-space: nowrap;
-            letter-spacing: 0.02em;
-        }
-        .pinyin-reading { color: #94a3b8; }
-
-        /* Toggle switch */
-        .toggle-checkbox:checked { right: 0; border-color: #0df280; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #0df280; }
-
-        body { min-height: 100dvh; }
-        @media (min-width: 1024px) {
-            body {
-                background-image: radial-gradient(circle at 20% 20%, rgba(13,242,128,0.08), transparent 35%), radial-gradient(circle at 80% 10%, rgba(59,130,246,0.08), transparent 30%);
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hotel Pop! Desktop Parody</title>
+  <style>
+    :root {
+      --bg: #7cc7ff;
+      --panel: #f4f8ff;
+      --ink: #1d2b53;
+      --mint: #72f2cb;
+      --pink: #ff9fca;
+      --yellow: #ffe38a;
+      --danger: #ff7575;
+      --ok: #59cc7f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(160deg, #93d5ff, #73c2ff 45%, #65b4ff);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .desktop {
+      display: grid;
+      grid-template-rows: 1fr 44px;
+      height: 100vh;
+      padding: 18px 18px 0;
+      gap: 12px;
+    }
+    .window {
+      border: 3px solid #254b91;
+      border-radius: 10px;
+      background: #dce9ff;
+      box-shadow: 0 14px 25px rgba(7, 32, 81, 0.25);
+      display: grid;
+      grid-template-rows: 36px 1fr;
+      overflow: hidden;
+    }
+    .titlebar {
+      background: linear-gradient(90deg, #2f5fb7, #5684df);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    .win-controls { display: flex; gap: 6px; }
+    .ctrl {
+      width: 14px; height: 14px; border: 2px solid #fff; border-radius: 3px;
+      background: rgba(255,255,255,0.3);
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 10px;
+      padding: 10px;
+      background: #c9dbff;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 2px solid #8fb2f2;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(90px,1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .kpi {
+      background: #fff;
+      border: 2px solid #b3caf6;
+      border-radius: 8px;
+      padding: 6px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .kpi strong { display: block; font-size: 20px; }
+    .layout-rows {
+      display: grid;
+      grid-template-rows: 1fr 140px;
+      gap: 10px;
+      min-height: 0;
+    }
+    .guest-list {
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      padding-right: 4px;
+    }
+    .guest {
+      background: white;
+      border: 2px solid #bcd0f7;
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .avatar { font-size: 24px; }
+    .needs { font-size: 12px; }
+    .timer {
+      width: 68px;
+      text-align: right;
+      font-weight: 700;
+      color: #315694;
+    }
+    .bar {
+      height: 7px;
+      border-radius: 999px;
+      background: #e8efff;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg,var(--ok),var(--yellow),var(--danger));
+      transform-origin: left;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px,1fr));
+      gap: 8px;
+    }
+    button {
+      border: 2px solid #24498d;
+      border-radius: 8px;
+      padding: 8px;
+      background: linear-gradient(#fff,#dce8ff);
+      cursor: pointer;
+      font-weight: 700;
+      color: #1f3a6f;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+    .shop button { width: 100%; margin-bottom: 7px; text-align: left; }
+    .log {
+      flex: 1;
+      overflow: auto;
+      background: #fff;
+      border: 2px solid #bed0f4;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .taskbar {
+      background: #2f5fb7;
+      color: white;
+      border-top: 3px solid #264d94;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-weight: 700;
+    }
+    .start {
+      background: #59cc7f;
+      color: #13341f;
+      border: 2px solid #173d24;
+      border-radius: 6px;
+      padding: 3px 12px;
+    }
+    .toast {
+      position: fixed;
+      right: 20px;
+      top: 20px;
+      background: #fff;
+      border: 2px solid #2c55a5;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      animation: pop 1.5s ease forwards;
+      box-shadow: 0 8px 20px rgba(33, 74, 148, 0.2);
+    }
+    @keyframes pop {
+      0% { opacity: 0; transform: translateY(-8px) scale(0.95); }
+      10%,80% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-8px) scale(0.95); }
+    }
+    @media (max-width: 1100px) {
+      .workspace { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: repeat(2,1fr); }
+      .kpis { grid-template-columns: repeat(3,1fr); }
+    }
+  </style>
 </head>
-
-<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
-    <div id="app" class="relative flex min-h-screen w-full flex-col lg:pl-72 overflow-hidden bg-background-light dark:bg-background-dark">
-
-        <!-- Auth Screen -->
-        <div id="screen-auth" class="screen flex-col min-h-screen lg:pb-28">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Onboarding Screen -->
-        <div id="screen-onboarding" class="screen flex-col h-screen">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Home Dashboard Screen -->
-        <div id="screen-home" class="screen flex-col min-h-screen lg:pb-28 pb-24">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Collections Screen -->
-        <div id="screen-collections" class="screen flex-col min-h-screen lg:pb-28 pb-24">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Collection Detail Screen -->
-        <div id="screen-collection-detail" class="screen flex-col min-h-screen lg:pb-28">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Add Word Screen -->
-        <div id="screen-add-word" class="screen flex-col min-h-screen lg:pb-28">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Study Session Screen -->
-        <div id="screen-study" class="screen flex-col h-screen">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Dialogue Generator Screen -->
-        <div id="screen-dialogue-settings" class="screen flex-col min-h-screen lg:pb-28">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Dialogue Practice Screen -->
-        <div id="screen-dialogue-practice" class="screen flex-col min-h-screen lg:pb-28">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Settings/Profile Screen -->
-        <div id="screen-settings" class="screen flex-col min-h-screen lg:pb-28 pb-24">
-            <!-- Content loaded dynamically -->
-        </div>
-
-        <!-- Desktop Navigation -->
-        <nav id="desktop-nav" class="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 w-72 p-4 xl:p-6">
-            <div class="w-full rounded-2xl bg-surface-light/90 dark:bg-[#173126]/90 backdrop-blur-lg shadow-xl border border-slate-200/70 dark:border-white/10 flex flex-col px-4 py-5">
-                <div class="px-2 pb-6 border-b border-slate-200/70 dark:border-white/10">
-                    <h1 class="text-2xl font-bold"><span class="text-primary">Lingua</span><span>Flow</span></h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Desktop Workspace</p>
-                </div>
-                <div class="flex flex-col gap-2 pt-5">
-                    <button onclick="app.navigate('home')" data-nav="home" class="nav-btn flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/10 transition-colors">
-                        <span class="material-symbols-outlined text-xl">home</span>
-                        <span class="text-sm font-semibold">Home</span>
-                    </button>
-                    <button onclick="app.navigate('collections')" data-nav="collections" class="nav-btn flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/10 transition-colors">
-                        <span class="material-symbols-outlined text-xl">style</span>
-                        <span class="text-sm font-semibold">Decks</span>
-                    </button>
-                    <button onclick="app.navigate('settings')" data-nav="settings" class="nav-btn flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/10 transition-colors">
-                        <span class="material-symbols-outlined text-xl">person</span>
-                        <span class="text-sm font-semibold">Profile</span>
-                    </button>
-                </div>
-                <div class="mt-auto pt-6">
-                    <button onclick="app.showCreateComposerModal()" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-background-dark shadow-[0_4px_12px_rgba(13,242,128,0.35)] hover:scale-[1.02] transition-transform font-bold">
-                        <span class="material-symbols-outlined text-xl">add</span>
-                        <span class="text-sm">New Card / Deck</span>
-                    </button>
-                </div>
+<body>
+  <div class="desktop">
+    <div class="window">
+      <div class="titlebar">
+        <span>🏨 Hotel Pop! Manager 98 - Totally Original Ops Suite</span>
+        <div class="win-controls"><span class="ctrl"></span><span class="ctrl"></span><span class="ctrl"></span></div>
+      </div>
+      <div class="workspace">
+        <section class="panel">
+          <div class="kpis">
+            <div class="kpi">Day<strong id="day">1</strong></div>
+            <div class="kpi">Coins<strong id="coins">120</strong></div>
+            <div class="kpi">Reputation<strong id="rep">100</strong></div>
+            <div class="kpi">Combo<strong id="combo">x1</strong></div>
+            <div class="kpi">Energy<strong id="energy">10</strong></div>
+            <div class="kpi">Time<strong id="time">45</strong></div>
+          </div>
+          <div class="layout-rows">
+            <div class="panel" style="padding:8px;">
+              <strong>Guest Queue</strong>
+              <div id="guests" class="guest-list"></div>
             </div>
-        </nav>
-
-        <!-- Bottom Navigation (shows on main screens) -->
-        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 hidden lg:hidden">
-            <div class="relative mx-auto max-w-md h-16 rounded-2xl bg-surface-light/80 dark:bg-[#1a2c24]/80 backdrop-blur-lg shadow-lg border border-white/20 dark:border-white/5 flex items-center justify-around px-2">
-                <button onclick="app.navigate('home')" data-nav="home" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                    <span class="material-symbols-outlined text-[28px]">home</span>
-                    <span class="text-[10px] font-medium">Home</span>
-                </button>
-                <!-- Dialogue hidden for MVP -->
-                <div class="relative -top-6">
-                    <button onclick="app.navigate('add-word')" class="flex items-center justify-center size-14 rounded-full bg-primary text-background-dark shadow-[0_4px_12px_rgba(13,242,128,0.4)] hover:scale-105 transition-transform">
-                        <span class="material-symbols-outlined text-3xl">add</span>
-                    </button>
-                </div>
-                <button onclick="app.navigate('collections')" data-nav="collections" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                    <span class="material-symbols-outlined text-[28px]">style</span>
-                    <span class="text-[10px] font-medium">Decks</span>
-                </button>
-                <button onclick="app.navigate('settings')" data-nav="settings" class="nav-btn flex flex-col items-center justify-center w-12 h-12 gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                    <span class="material-symbols-outlined text-[28px]">person</span>
-                    <span class="text-[10px] font-medium">Profile</span>
-                </button>
+            <div class="panel">
+              <strong>Quick Actions</strong>
+              <div class="actions">
+                <button data-action="checkin">🛎️ Speed Check-in</button>
+                <button data-action="clean">🧼 Turbo Clean</button>
+                <button data-action="snack">🧁 Snack Drop</button>
+                <button data-action="decor">🌸 Decor Burst</button>
+              </div>
             </div>
-        </nav>
-
-        <!-- Toast Notifications -->
-        <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2"></div>
-
-        <!-- Modal Container -->
-        <div id="modal-container" class="fixed inset-0 z-[90] hidden">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="app.closeModal()"></div>
-            <div id="modal-content" class="absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto lg:top-1/2 lg:left-1/2 lg:right-auto lg:bottom-auto lg:-translate-x-1/2 lg:-translate-y-1/2 lg:max-w-xl lg:rounded-3xl"></div>
-        </div>
-
-        <!-- Debug Console (for mobile) -->
-        <div id="debug-console" class="fixed bottom-20 right-4 left-4 bg-black/95 backdrop-blur-md rounded-2xl p-4 max-h-80 overflow-y-auto hidden z-[100] font-mono text-xs">
-            <div class="flex justify-between items-center mb-2 pb-2 border-b border-white/10">
-                <span class="text-primary font-bold">Debug Console</span>
-                <div class="flex gap-2">
-                    <button onclick="app.copyDebugLogs()" class="text-slate-400 hover:text-white">Copy</button>
-                    <button onclick="app.clearDebugConsole()" class="text-slate-400 hover:text-white">Clear</button>
-                    <button onclick="app.toggleDebugConsole()" class="text-slate-400 hover:text-white">✕</button>
-                </div>
-            </div>
-            <div id="debug-output" class="space-y-1"></div>
-        </div>
-
-        <!-- Debug Toggle Button -->
-        <button id="debug-toggle" onclick="app.toggleDebugConsole()" class="fixed bottom-24 right-4 size-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all z-[99] shadow-lg">
-            <span class="material-symbols-outlined text-xl">bug_report</span>
-        </button>
+          </div>
+        </section>
+        <aside class="panel shop">
+          <strong>Upgrades</strong>
+          <button data-upgrade="desk">+ Reception Bot (70)</button>
+          <button data-upgrade="house">+ Housekeeping Drone (80)</button>
+          <button data-upgrade="cart">+ Snack Cart Deluxe (65)</button>
+          <button data-upgrade="aura">+ Cute Lobby Aura (90)</button>
+          <strong>Event Log</strong>
+          <div id="log" class="log"></div>
+        </aside>
+      </div>
     </div>
-
-    <!-- Load App Scripts -->
-    <script src="/api/config.js"></script>
-    <script>
-        // Supabase Configuration - Set your values here or in localStorage
-        window.SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('supabase_url') || 'https://fzwoakgdmktjzlzxxvze.supabase.co';
-        window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('supabase_key') || 'YOUR_SUPABASE_ANON_KEY';
-    </script>
-    <script src="js/supabase.js"></script>
-    <script src="js/data-wrapper.js"></script>
-    <script src="js/gemini-service.js"></script>
-    <script src="js/screens/auth.js"></script>
-    <script src="js/screens/onboarding.js"></script>
-    <script src="js/screens/home.js"></script>
-    <script src="js/screens/collections.js"></script>
-    <script src="js/screens/collection-detail.js"></script>
-    <script src="js/screens/add-word.js"></script>
-    <script src="js/screens/study.js"></script>
-    <script src="js/screens/dialogue-settings.js"></script>
-    <script src="js/screens/dialogue-practice.js"></script>
-    <script src="js/screens/settings.js"></script>
-    <script src="js/app.js"></script>
+    <div class="taskbar">
+      <span class="start">★ START</span>
+      <span id="clock">09:00</span>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
 </body>
 </html>
