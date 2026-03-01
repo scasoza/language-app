@@ -124,10 +124,10 @@ const CollectionDetailScreen = {
         };
 
         return `
-            <div class="bg-surface-dark rounded-xl p-4 border border-white/5 flex items-center gap-3 ${this.isEditing ? 'pr-2' : ''}">
+            <div class="bg-surface-dark rounded-xl p-4 border border-white/5 flex items-center gap-3 ${this.isEditing ? 'pr-2' : ''}" data-card-id="${card.id}">
                 <div class="flex-1 min-w-0">
-                    <p class="font-bold text-white truncate">${card.front}</p>
-                    <p class="text-sm text-slate-400 truncate">${card.back}</p>
+                    <p class="font-bold text-white truncate card-front">${card.front}</p>
+                    <p class="text-sm text-slate-400 truncate card-back">${card.back}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="px-2 py-1 rounded-lg text-xs font-medium ${masteryColors[masteryLevel]}">
@@ -367,8 +367,15 @@ const CollectionDetailScreen = {
                 <!-- Text input -->
                 <div>
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Or type instructions</label>
-                    <textarea id="ai-edit-instructions" rows="3" placeholder="e.g., Add 20 restaurant cards, remove greeting cards, modify translations..." class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                    <textarea id="ai-edit-instructions" rows="3" placeholder="e.g., Add 20 restaurant cards, remove greeting cards, fix translations..." class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
                     <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Quick action hints -->
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="document.getElementById('ai-edit-instructions').value='Add 10 more cards'" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white hover:border-primary/30 transition-colors">Add cards</button>
+                    <button onclick="document.getElementById('ai-edit-instructions').value='Remove all cards about '" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white hover:border-primary/30 transition-colors">Remove cards</button>
+                    <button onclick="document.getElementById('ai-edit-instructions').value='Fix the translations for all cards'" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white hover:border-primary/30 transition-colors">Fix translations</button>
                 </div>
 
                 <!-- Image upload - secondary -->
@@ -564,7 +571,9 @@ const CollectionDetailScreen = {
         }
 
         app.closeModal();
-        app.showLoadingOverlay('Processing edits...', 'Analyzing your collection');
+
+        // Show non-blocking inline status banner instead of full-screen overlay
+        this.showEditStatusBanner('Processing your changes...');
 
         try {
             const user = DataStore.getUser();
@@ -586,42 +595,203 @@ const CollectionDetailScreen = {
             }
 
             // Remove cards if specified
+            let removedCount = 0;
             if (result.removeCardIds && result.removeCardIds.length > 0) {
                 result.removeCardIds.forEach(cardId => {
                     DataStore.deleteCard(cardId);
+                    removedCount++;
                 });
+                // Remove card elements from DOM
+                this.removeCardElements(result.removeCardIds);
             }
 
             // Add or modify cards
+            let addedCount = 0;
+            let modifiedCount = 0;
             if (result.cards && result.cards.length > 0) {
                 if (result.action === 'modify') {
-                    // Update existing cards
                     result.cards.forEach(card => {
                         if (card.cardId) {
                             DataStore.updateCard(card.cardId, card);
+                            modifiedCount++;
                         }
                     });
+                    // Update modified card elements in-place
+                    this.updateCardElements(result.cards);
                 } else {
-                    // Add new cards
                     result.cards.forEach(card => {
                         DataStore.addCard({
                             ...card,
                             collectionId: this.collectionId
                         });
+                        addedCount++;
                     });
+                    // Append new card elements to DOM
+                    this.appendCardElements();
                 }
             }
 
-            app.hideLoadingOverlay();
+            // For mixed actions, just re-render the card list
+            if (result.action === 'mixed') {
+                this.refreshCardList();
+            }
 
-            const changeCount = (result.cards?.length || 0) + (result.removeCardIds?.length || 0);
-            app.showToast(`Applied ${changeCount} change${changeCount !== 1 ? 's' : ''}!`, 'success');
+            this.hideEditStatusBanner();
+            this.updateProgressBar();
 
-            this.render();
+            // Build descriptive toast
+            const parts = [];
+            if (addedCount > 0) parts.push(`${addedCount} added`);
+            if (modifiedCount > 0) parts.push(`${modifiedCount} modified`);
+            if (removedCount > 0) parts.push(`${removedCount} removed`);
+            app.showToast(parts.length > 0 ? `Cards: ${parts.join(', ')}` : 'No changes needed', 'success');
         } catch (error) {
-            app.hideLoadingOverlay();
+            this.hideEditStatusBanner();
             app.showToast(error.message, 'error');
         }
+    },
+
+    // --- Non-blocking status banner ---
+    showEditStatusBanner(message) {
+        // Remove existing banner if any
+        this.hideEditStatusBanner();
+
+        const container = document.getElementById('screen-collection-detail');
+        const banner = document.createElement('div');
+        banner.id = 'edit-status-banner';
+        banner.className = 'fixed top-0 left-0 right-0 z-50 lg:left-72';
+        banner.innerHTML = `
+            <div class="mx-4 mt-4 px-4 py-3 rounded-xl bg-surface-dark border border-primary/30 flex items-center gap-3 shadow-lg backdrop-blur-sm">
+                <div class="spinner shrink-0"></div>
+                <span class="text-sm font-medium" id="edit-status-text">${message}</span>
+            </div>
+        `;
+        container.appendChild(banner);
+    },
+
+    hideEditStatusBanner() {
+        const banner = document.getElementById('edit-status-banner');
+        if (banner) {
+            banner.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+            setTimeout(() => banner.remove(), 300);
+        }
+    },
+
+    // --- Live DOM updates for cards ---
+    removeCardElements(cardIds) {
+        const listContainer = document.querySelector('#screen-collection-detail .space-y-2');
+        if (!listContainer) return;
+
+        cardIds.forEach(id => {
+            const el = listContainer.querySelector(`[data-card-id="${id}"]`);
+            if (el) {
+                el.classList.add('opacity-0', 'scale-95', 'transition-all', 'duration-300');
+                setTimeout(() => el.remove(), 300);
+            }
+        });
+
+        // Update header card count
+        this.updateCardCount();
+    },
+
+    updateCardElements(cards) {
+        cards.forEach(card => {
+            if (!card.cardId) return;
+            const el = document.querySelector(`[data-card-id="${card.cardId}"]`);
+            if (!el) return;
+
+            const frontEl = el.querySelector('.card-front');
+            const backEl = el.querySelector('.card-back');
+            if (frontEl && card.front) frontEl.textContent = card.front;
+            if (backEl && card.back) backEl.textContent = card.back;
+
+            // Flash highlight
+            el.classList.add('ring-2', 'ring-primary/50');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-primary/50'), 2000);
+        });
+    },
+
+    appendCardElements() {
+        const cards = DataStore.getCards(this.collectionId);
+        const listContainer = document.querySelector('#screen-collection-detail .space-y-2');
+        const emptyState = document.querySelector('#screen-collection-detail .text-center.py-12');
+
+        // If there was an empty state, replace the card list section entirely
+        if (emptyState || !listContainer) {
+            this.refreshCardList();
+            return;
+        }
+
+        // Find cards not yet rendered (they won't have matching DOM elements)
+        const existingIds = new Set(
+            Array.from(listContainer.querySelectorAll('[data-card-id]'))
+                .map(el => el.dataset.cardId)
+        );
+
+        cards.forEach(card => {
+            if (existingIds.has(card.id)) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = this.renderCardItem(card);
+            const newEl = wrapper.firstElementChild;
+            newEl.classList.add('opacity-0', 'translate-y-2');
+            listContainer.appendChild(newEl);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                newEl.classList.add('transition-all', 'duration-300');
+                newEl.classList.remove('opacity-0', 'translate-y-2');
+            });
+        });
+
+        this.updateCardCount();
+    },
+
+    refreshCardList() {
+        const cards = DataStore.getCards(this.collectionId);
+        const cardSection = document.querySelector('#screen-collection-detail .flex-1.px-4.pb-24');
+        if (!cardSection) return;
+
+        cardSection.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Cards</h2>
+                <button onclick="CollectionDetailScreen.toggleEdit()" class="text-primary text-sm font-medium">
+                    ${this.isEditing ? 'Done' : 'Edit'}
+                </button>
+            </div>
+            ${cards.length === 0 ? `
+                <div class="text-center py-12">
+                    <span class="material-symbols-outlined text-5xl text-slate-500 mb-3">style</span>
+                    <p class="text-slate-400">No cards yet — use the button above to add cards</p>
+                </div>
+            ` : `
+                <div class="space-y-2">
+                    ${cards.map(card => this.renderCardItem(card)).join('')}
+                </div>
+            `}
+        `;
+
+        this.updateCardCount();
+    },
+
+    updateCardCount() {
+        const cards = DataStore.getCards(this.collectionId);
+        const dueCards = DataStore.getDueCards(this.collectionId);
+        const countEl = document.querySelector('#screen-collection-detail .text-white\\/70');
+        if (countEl) {
+            countEl.textContent = `${cards.length} cards${dueCards.length > 0 ? ` · ${dueCards.length} due` : ''}`;
+        }
+    },
+
+    updateProgressBar() {
+        const collection = DataStore.getCollection(this.collectionId);
+        const cards = DataStore.getCards(this.collectionId);
+        const progress = cards.length > 0 ? Math.round((collection.mastered / cards.length) * 100) : 0;
+
+        const progressBar = document.querySelector('#screen-collection-detail .h-2.bg-white\\/10 .h-full');
+        const progressText = document.querySelector('#screen-collection-detail .text-primary');
+        if (progressBar) progressBar.style.width = `${progress}%`;
+        if (progressText) progressText.textContent = `${progress}%`;
     }
 };
 
