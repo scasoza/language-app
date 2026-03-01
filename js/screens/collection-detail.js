@@ -368,7 +368,7 @@ const CollectionDetailScreen = {
                         <span class="material-symbols-outlined text-primary text-3xl">mic</span>
                     </div>
                     <span class="text-sm font-semibold text-primary">Tap to speak</span>
-                    <span class="text-xs text-slate-500">e.g. "Add 10 cards about greetings"</span>
+                    <span class="text-xs text-slate-500">e.g. "Remove all greeting cards"</span>
                 </button>
 
                 <!-- Text input -->
