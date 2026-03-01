@@ -340,43 +340,45 @@ const CollectionDetailScreen = {
     showAIEditModal() {
         app.closeModal();
 
+        const collection = DataStore.getCollection(this.collectionId);
+        const cards = DataStore.getCards(this.collectionId);
+
         app.showModal(`
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">Add or Edit Cards</h3>
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h3 class="text-lg font-bold">Add or Edit Cards</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">${collection.name} · ${cards.length} card${cards.length !== 1 ? 's' : ''}</p>
+                </div>
                 <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
             <div class="space-y-4">
-                <p class="text-sm text-slate-400">Describe what you want — add cards, remove cards, or modify existing ones.</p>
+                <!-- Voice input - hero element -->
+                <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="w-full py-5 rounded-2xl bg-gradient-to-b from-primary/15 to-primary/5 border-2 border-primary/30 flex flex-col items-center justify-center gap-2 hover:from-primary/25 hover:to-primary/10 transition-all group">
+                    <div class="size-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-3xl">mic</span>
+                    </div>
+                    <span class="text-sm font-semibold text-primary">Tap to speak</span>
+                    <span class="text-xs text-slate-500">e.g. "Add 10 cards about greetings"</span>
+                </button>
 
+                <!-- Text input -->
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Instructions</label>
-                    <textarea id="ai-edit-instructions" rows="4" placeholder="Examples:
-- Add 20 cards about restaurant vocabulary
-- Remove all cards related to greetings
-- Add cards for the words in this image
-- Create 10 cards based on what I say" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Or type instructions</label>
+                    <textarea id="ai-edit-instructions" rows="3" placeholder="e.g., Add 20 restaurant cards, remove greeting cards, modify translations..." class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
                     <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
                 </div>
 
-                <!-- Voice input - prominent -->
-                <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="w-full py-4 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-3 hover:bg-white/5 transition-colors">
-                    <span class="material-symbols-outlined text-primary text-2xl">mic</span>
-                    <span class="font-medium">Record Voice Instructions</span>
-                </button>
-
                 <!-- Image upload - secondary -->
-                <div class="flex items-center gap-3">
-                    <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="flex-1 py-3 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors text-sm">
-                        <span class="material-symbols-outlined text-slate-400">image</span>
-                        <span class="text-slate-400">Attach Image</span>
-                    </button>
-                    <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
-                </div>
+                <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="w-full py-3 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors text-sm">
+                    <span class="material-symbols-outlined text-slate-400 text-lg">image</span>
+                    <span class="text-slate-400">Attach Image</span>
+                </button>
+                <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
 
-                <button onclick="CollectionDetailScreen.processAIEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
+                <button onclick="CollectionDetailScreen.processAIEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-transform">
                     Apply
                 </button>
             </div>
@@ -425,13 +427,23 @@ const CollectionDetailScreen = {
 
             const recordBtn = document.getElementById('ai-edit-audio-btn');
             if (recordBtn) {
-                recordBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
-                recordBtn.classList.remove('bg-surface-dark', 'border-white/10');
-                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
-                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+                recordBtn.classList.add('border-red-500', 'animate-pulse');
+                recordBtn.classList.remove('border-primary/30');
+                const icon = recordBtn.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.add('text-red-500');
+                    icon.classList.remove('text-primary');
+                    icon.textContent = 'stop_circle';
+                }
+                const label = recordBtn.querySelector('.font-semibold');
+                if (label) {
+                    label.textContent = 'Recording... Tap to stop';
+                    label.classList.add('text-red-400');
+                    label.classList.remove('text-primary');
+                }
             }
 
-            app.showToast('Recording... Click again to stop', 'info');
+            app.showToast('Recording...', 'info');
         } catch (error) {
             console.error('Audio recording error:', error);
             app.showToast('Failed to access microphone', 'error');
@@ -445,10 +457,20 @@ const CollectionDetailScreen = {
 
             const recordBtn = document.getElementById('ai-edit-audio-btn');
             if (recordBtn) {
-                recordBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
-                recordBtn.classList.add('bg-surface-dark', 'border-white/10');
-                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
-                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+                recordBtn.classList.remove('border-red-500', 'animate-pulse');
+                recordBtn.classList.add('border-primary/30');
+                const icon = recordBtn.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-red-500');
+                    icon.classList.add('text-primary');
+                    icon.textContent = 'mic';
+                }
+                const label = recordBtn.querySelector('.font-semibold, .text-red-400');
+                if (label) {
+                    label.textContent = 'Tap to speak';
+                    label.classList.remove('text-red-400');
+                    label.classList.add('text-primary');
+                }
             }
 
             app.showToast('Audio recorded!', 'success');

@@ -83,14 +83,17 @@ const HomeScreen = {
 
  <!-- Quick Add Banner -->
  <section class="px-4 lg:px-6 py-4">
- <button onclick="app.navigate('add-word')" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform active:scale-[0.98]">
+ <button onclick="app.showCreateComposerModal()" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 hover:from-primary/20 hover:to-primary/10 transition-all active:scale-[0.98]">
+ <div class="flex items-center gap-3">
+ <div class="flex size-11 items-center justify-center rounded-full bg-primary/20">
+ <span class="material-symbols-outlined text-primary text-xl">mic</span>
+ </div>
  <div class="flex flex-col items-start">
- <span class="font-bold text-lg">New word?</span>
- <span class="text-sm text-blue-100 opacity-90">Add it to your collection instantly.</span>
+ <span class="font-bold">Create something</span>
+ <span class="text-xs text-slate-400">New deck or card — speak or type</span>
  </div>
- <div class="flex size-10 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm">
- <span class="material-symbols-outlined">add</span>
  </div>
+ <span class="material-symbols-outlined text-primary/50">arrow_forward</span>
  </button>
  </section>
 

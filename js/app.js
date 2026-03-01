@@ -241,38 +241,43 @@ const app = {
             </div>
 
             <div id="create-mode-deck" class="space-y-4">
+                <p class="text-sm text-slate-400">Describe your deck by voice, text, or image and it will be created for you.</p>
+
+                <!-- Voice input - hero element -->
+                <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="w-full py-5 rounded-2xl bg-gradient-to-b from-primary/15 to-primary/5 border-2 border-primary/30 flex flex-col items-center justify-center gap-2 hover:from-primary/25 hover:to-primary/10 transition-all group">
+                    <div class="size-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-3xl">mic</span>
+                    </div>
+                    <span class="text-sm font-semibold text-primary">Tap to describe your deck</span>
+                    <span class="text-xs text-slate-500">e.g. "20 Spanish restaurant phrases"</span>
+                </button>
+
+                <!-- Text input -->
                 <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Deck Name (Optional)</label>
-                    <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Or type it</label>
+                    <textarea id="collection-topic" rows="2" placeholder="e.g., 20 airport phrases, beginner food vocabulary..." class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
                 </div>
 
-                <div class="pt-2 border-t border-white/10">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-bold text-primary">Create from text, audio, and images</p>
-                        <div class="flex gap-2">
-                            <button id="audio-record-btn" onclick="app.toggleAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio">
-                                <span class="material-symbols-outlined text-primary text-xl">mic</span>
-                            </button>
-                            <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
-                                <span class="material-symbols-outlined text-primary text-xl">image</span>
-                            </button>
-                            <input type="file" id="ai-image-input" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What should this deck cover?</label>
-                        <textarea id="collection-topic" rows="3" placeholder="Examples: 20 airport phrases, beginner food vocabulary, business small talk" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
-                        <div id="multimodal-preview" class="mt-2 flex flex-wrap gap-2"></div>
-                        <p class="text-xs text-slate-500 mt-1">Tip: Images need text or audio context so the deck can be generated accurately.</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 pt-2">
-                    <button onclick="app.createCollection(false)" class="flex-1 bg-surface-dark border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/5 transition-colors">
-                        Create Empty Deck
+                <!-- Attachments row -->
+                <div class="flex items-center gap-3">
+                    <button id="image-upload-btn" onclick="document.getElementById('ai-image-input').click()" class="flex-1 py-3 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors text-sm">
+                        <span class="material-symbols-outlined text-slate-400 text-lg">image</span>
+                        <span class="text-slate-400">Attach Image</span>
                     </button>
-                    <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                        Create from Input
+                    <input type="file" id="ai-image-input" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)" />
+                    <div>
+                        <input type="text" id="collection-name" placeholder="Deck name (optional)" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 text-sm" />
+                    </div>
+                </div>
+
+                <div id="multimodal-preview" class="flex flex-wrap gap-2"></div>
+
+                <div class="flex gap-3 pt-1">
+                    <button onclick="app.createCollection(false)" class="bg-surface-dark border border-white/10 text-white font-bold py-3 px-5 rounded-xl hover:bg-white/5 transition-colors text-sm">
+                        Empty Deck
+                    </button>
+                    <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-transform">
+                        Create Deck
                     </button>
                 </div>
             </div>
@@ -715,12 +720,23 @@ const app = {
 
             const recordBtn = document.getElementById('audio-record-btn');
             if (recordBtn) {
-                recordBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
-                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
-                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+                recordBtn.classList.add('border-red-500', 'animate-pulse');
+                recordBtn.classList.remove('border-primary/30');
+                const icon = recordBtn.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.add('text-red-500');
+                    icon.classList.remove('text-primary');
+                    icon.textContent = 'stop_circle';
+                }
+                const label = recordBtn.querySelector('.text-primary, .font-semibold');
+                if (label) {
+                    label.textContent = 'Recording... Tap to stop';
+                    label.classList.add('text-red-400');
+                    label.classList.remove('text-primary');
+                }
             }
 
-            this.showToast('Recording audio... Click again to stop', 'info');
+            this.showToast('Recording...', 'info');
         } catch (error) {
             console.error('Audio recording error:', error);
             this.showToast('Failed to access microphone', 'error');
@@ -734,9 +750,20 @@ const app = {
 
             const recordBtn = document.getElementById('audio-record-btn');
             if (recordBtn) {
-                recordBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
-                recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
-                recordBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
+                recordBtn.classList.remove('border-red-500', 'animate-pulse');
+                recordBtn.classList.add('border-primary/30');
+                const icon = recordBtn.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-red-500');
+                    icon.classList.add('text-primary');
+                    icon.textContent = 'mic';
+                }
+                const label = recordBtn.querySelector('.font-semibold, .text-red-400');
+                if (label) {
+                    label.textContent = 'Tap to describe your deck';
+                    label.classList.remove('text-red-400');
+                    label.classList.add('text-primary');
+                }
             }
 
             this.showToast('Audio recorded!', 'success');

@@ -46,20 +46,18 @@ const CollectionsScreen = {
             <main class="px-4 lg:px-8 py-4 w-full">
                 <!-- Quick Create Banner -->
                 ${collections.length === 0 || this.filter === 'all' ? `
-                    <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
-                        <div class="flex items-start gap-3">
-                            <div class="size-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-primary text-2xl">add_circle</span>
+                    <button onclick="app.showCreateCollectionModal()" class="mb-6 w-full bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm hover:from-primary/15 hover:to-primary/5 transition-all text-left group">
+                        <div class="flex items-center gap-3">
+                            <div class="size-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 group-hover:bg-primary/30 transition-colors">
+                                <span class="material-symbols-outlined text-primary text-2xl">mic</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-white mb-1">Create a deck</h3>
-                                <p class="text-xs text-slate-300 mb-3">Use text, voice, or images to build decks instantly</p>
-                                <button onclick="app.showCreateCollectionModal()" class="bg-primary text-background-dark px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                                    New Deck
-                                </button>
+                                <h3 class="text-sm font-bold text-white mb-0.5">Create a deck</h3>
+                                <p class="text-xs text-slate-400">Describe it by voice, text, or image</p>
                             </div>
+                            <span class="material-symbols-outlined text-primary/50 group-hover:text-primary transition-colors">arrow_forward</span>
                         </div>
-                    </div>
+                    </button>
                 ` : ''}
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
