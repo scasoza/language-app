@@ -8,43 +8,55 @@ const app = {
     screensWithNav: ['home', 'collections', 'settings'],
 
     async init() {
-        console.log('Initializing LinguaFlow...');
-        this.registerSupabaseWarnings();
-        this.registerAuthEvents();
+        try {
+            console.log('Initializing LinguaFlow...');
+            this.registerSupabaseWarnings();
+            this.registerAuthEvents();
 
-        // Initialize Supabase
-        await SupabaseService.init();
+            // Initialize Supabase
+            await SupabaseService.init();
 
-        if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
-            // Not logged in — show auth screen
-            this.navigate('auth');
-            return;
+            if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
+                // Not logged in — show auth screen
+                this.navigate('auth');
+                return;
+            }
+
+            await this.handleAuthenticatedSession();
+        } catch (error) {
+            console.error('App init error:', error);
+            // Attempt to show home screen as fallback
+            this.navigate('home');
         }
-
-        await this.handleAuthenticatedSession();
     },
 
     navigate(screenId, addToHistory = true) {
-        // Hide all screens
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        try {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
-        // Show target screen
-        const screen = document.getElementById(`screen-${screenId}`);
-        if (screen) {
-            screen.classList.add('active');
+            // Show target screen
+            const screen = document.getElementById(`screen-${screenId}`);
+            if (screen) {
+                screen.classList.add('active');
 
-            // Render screen content
-            this.renderScreen(screenId);
+                // Render screen content
+                this.renderScreen(screenId);
 
-            // Update navigation
-            this.updateNavigation(screenId);
+                // Update navigation
+                this.updateNavigation(screenId);
 
-            // Add to history
-            if (addToHistory && this.currentScreen !== screenId) {
-                this.history.push(this.currentScreen);
+                // Add to history
+                if (addToHistory && this.currentScreen !== screenId) {
+                    this.history.push(this.currentScreen);
+                }
+
+                this.currentScreen = screenId;
+            } else {
+                console.error('Screen not found:', screenId);
             }
-
-            this.currentScreen = screenId;
+        } catch (error) {
+            console.error('Navigation error for screen ' + screenId + ':', error);
         }
     },
 
@@ -150,7 +162,15 @@ const app = {
         requestAnimationFrame(() => {
             const home = document.getElementById('screen-home');
             if (this.currentScreen !== 'home' || !home || !home.innerHTML.trim()) {
+                console.warn('Home screen fallback triggered');
                 this.navigate('home', false);
+            }
+            // Log render state for debugging
+            if (home) {
+                console.log('screen-home active:', home.classList.contains('active'),
+                    'display:', getComputedStyle(home).display,
+                    'height:', home.offsetHeight,
+                    'children:', home.children.length);
             }
         });
     },
@@ -1026,6 +1046,13 @@ console.warn = function(...args) {
         app.addDebugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
     }
 };
+
+// Capture unhandled promise rejections in debug console
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const message = reason instanceof Error ? reason.message : String(reason);
+    console.error('Unhandled rejection: ' + message);
+});
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
