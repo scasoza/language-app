@@ -759,64 +759,72 @@ Text: "${text}"`;
      * @returns {Promise<Object>} - Modified collection data with changes
      */
     async editCollectionWithAI(input) {
-        const { collectionId, instructions, audio, image, text, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
+        const { collectionId, instructions, audio, image, targetLanguage = 'Spanish', nativeLanguage = 'English' } = input;
 
         // Get current collection data
         const collection = DataStore.getCollection(collectionId);
         const existingCards = DataStore.getCards(collectionId);
 
         const isChinese = targetLanguage.toLowerCase().includes('chinese') || targetLanguage.toLowerCase().includes('mandarin');
-        const readingGuide = isChinese ? 'pinyin' : 'phonetic';
         const pinyinQualityRule = isChinese
             ? '\nPinyin quality rule: for Chinese output, provide exactly one pinyin syllable per Chinese character (Hanzi), in the same order, separated by spaces. Keep punctuation aligned with the sentence, and do not merge syllables.'
             : '';
 
-        // Build prompt with instructions
+        // Build input description (avoid duplicating instructions/text)
         let inputDescription = '';
         if (instructions) inputDescription += `User instructions: "${instructions}"\n`;
-        if (text) inputDescription += `Additional text: "${text}"\n`;
-        if (audio) inputDescription += 'Audio instructions provided.\n';
+        if (audio) inputDescription += 'Audio instructions provided (transcribe and follow them).\n';
         if (image) inputDescription += 'Image provided for context.\n';
 
-        // Send all cards with IDs so AI can accurately reference any card for modify/delete.
+        // Determine if the instruction is likely about editing/removing existing cards
+        const lowerInstructions = (instructions || '').toLowerCase();
+        const isEditOrRemove = lowerInstructions.includes('remove') || lowerInstructions.includes('delete') ||
+            lowerInstructions.includes('keep only') || lowerInstructions.includes('except') ||
+            lowerInstructions.includes('modify') || lowerInstructions.includes('change') ||
+            lowerInstructions.includes('fix') || lowerInstructions.includes('update') ||
+            lowerInstructions.includes('replace');
+
+        // For edit/remove operations on large decks, process in batches for accuracy
+        const BATCH_SIZE = 50;
+        if (isEditOrRemove && existingCards.length > BATCH_SIZE) {
+            return await this._editInBatches(existingCards, collection, inputDescription, audio, image, isChinese, pinyinQualityRule, targetLanguage, nativeLanguage);
+        }
+
+        // Single-pass for add operations or small decks
+        return await this._editSinglePass(existingCards, collection, inputDescription, audio, image, isChinese, pinyinQualityRule, targetLanguage, nativeLanguage);
+    },
+
+    async _editSinglePass(existingCards, collection, inputDescription, audio, image, isChinese, pinyinQualityRule, targetLanguage, nativeLanguage) {
         const cardList = existingCards.map(c => `[${c.id}] ${c.front} → ${c.back}`).join('\n');
 
-        const prompt = `You are a language learning expert. Edit this flashcard collection based on user instructions.
+        const prompt = `You are a language learning expert. Edit this flashcard collection based on the user's instructions.
+Target language: ${targetLanguage}, Native language: ${nativeLanguage}
 
-Current collection: "${collection.name}"
-Current cards (${existingCards.length} total):
-${cardList}
+Collection: "${collection.name}"
+${existingCards.length > 0 ? `Current cards (${existingCards.length}):\n${cardList}` : 'No cards yet.'}
 
 ${inputDescription}
 
-IMPORTANT:
-- If the user specifies how many cards to add/create in their input, use that number.
-- Otherwise, add 5 new cards by default if adding cards.
-- For modifications, update existing cards as instructed.
-- For deletions, specify which cards to remove.
+Follow the user's instructions exactly. Determine what action to take:
+- "add": Create new cards. Default to 5 if count not specified.
+- "remove": Delete cards. Put their exact IDs in removeCardIds.
+- "modify": Change existing cards. Include cardId for each.
+- "mixed": Combination of the above.
 
-Provide a response with:
-1. action: "add", "modify", "remove", or "mixed"
-2. cardCount: Number of cards affected (if applicable)
-3. cards: Array of new/modified cards (only if adding or modifying), each with:
-   - front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
-   - If modifying, include: cardId (from existing cards)${pinyinQualityRule}
-4. removeCardIds: Array of card IDs to remove (only if removing)
-5. collectionUpdates: Object with any collection-level changes (name, emoji, description)
+CRITICAL for removals: When the user says "remove all except X" or "keep only X", you MUST list every card ID that should be removed in removeCardIds. Do NOT list the cards to keep — list the ones to DELETE.
 
-Respond ONLY with valid JSON:
+Each card object needs: front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}
+For modifications, also include: cardId${pinyinQualityRule}
+
+Respond ONLY with valid JSON (no markdown, no explanation):
 {
-  "action": "add",
-  "cardCount": 5,
-  "cards": [...],
-  "removeCardIds": [],
+  "action": "remove",
+  "removeCardIds": ["id1", "id2"],
+  "cards": [],
   "collectionUpdates": {}
 }`;
 
-        // Build multimodal content array
         const contents = [{ parts: [{ text: prompt }] }];
-
-        // Add audio if provided
         if (audio) {
             contents[0].parts.push({
                 inlineData: {
@@ -825,8 +833,6 @@ Respond ONLY with valid JSON:
                 }
             });
         }
-
-        // Add image if provided
         if (image) {
             contents[0].parts.push({
                 inlineData: {
@@ -837,13 +843,12 @@ Respond ONLY with valid JSON:
         }
 
         const response = await this.callAPI(this.MODELS.FLASH, contents, {
-            temperature: 0.7,
-            maxTokens: 8192,
+            temperature: 0.3,
+            maxTokens: 16384,
             thinkingLevel: this.THINKING_LEVELS.MEDIUM
         });
 
         const text_response = this.extractText(response);
-
         try {
             const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
             return JSON.parse(cleaned);
@@ -851,6 +856,111 @@ Respond ONLY with valid JSON:
             console.error('Failed to parse AI edit response:', e, text_response);
             throw new Error('Failed to process AI editing. Please try again.');
         }
+    },
+
+    async _editInBatches(existingCards, collection, inputDescription, audio, image, isChinese, pinyinQualityRule, targetLanguage, nativeLanguage) {
+        const BATCH_SIZE = 50;
+        const batches = [];
+        for (let i = 0; i < existingCards.length; i += BATCH_SIZE) {
+            batches.push(existingCards.slice(i, i + BATCH_SIZE));
+        }
+
+        console.log(`Processing ${existingCards.length} cards in ${batches.length} batches of ${BATCH_SIZE}`);
+
+        // Process batches in parallel
+        const batchResults = await Promise.all(batches.map(async (batch, index) => {
+            const cardList = batch.map(c => `[${c.id}] ${c.front} → ${c.back}`).join('\n');
+
+            const prompt = `You are a language learning expert. Process this BATCH of cards (batch ${index + 1}/${batches.length}) from the collection "${collection.name}".
+Target language: ${targetLanguage}, Native language: ${nativeLanguage}
+
+This batch contains ${batch.length} cards (out of ${existingCards.length} total in the collection):
+${cardList}
+
+${inputDescription}
+
+Apply the user's instructions to THIS batch of cards only.
+- If instructed to remove/delete cards, list the IDs from this batch that should be removed.
+- If "keep only" or "except" is used, remove everything in this batch that does NOT match the criteria.
+- If instructed to modify cards, return modified versions with their cardId.
+- Do NOT add new cards in batch processing — only remove or modify.
+
+CRITICAL: List the exact card IDs from this batch that should be removed in removeCardIds.
+
+Each modified card needs: cardId, front, back, reading, example, exampleTranslation${isChinese ? ', exampleReading' : ''}${pinyinQualityRule}
+
+Respond ONLY with valid JSON:
+{
+  "action": "remove",
+  "removeCardIds": ["id1", "id2"],
+  "cards": []
+}`;
+
+            const contents = [{ parts: [{ text: prompt }] }];
+            // Only send audio/image with the first batch to avoid redundancy
+            if (index === 0) {
+                if (audio) {
+                    contents[0].parts.push({
+                        inlineData: {
+                            mimeType: this.detectAudioMimeType(audio),
+                            data: audio.replace(/^data:audio\/\w+;base64,/, '')
+                        }
+                    });
+                }
+                if (image) {
+                    contents[0].parts.push({
+                        inlineData: {
+                            mimeType: 'image/jpeg',
+                            data: image.replace(/^data:image\/\w+;base64,/, '')
+                        }
+                    });
+                }
+            }
+
+            const response = await this.callAPI(this.MODELS.FLASH, contents, {
+                temperature: 0.3,
+                maxTokens: 8192,
+                thinkingLevel: this.THINKING_LEVELS.MEDIUM
+            });
+
+            const text_response = this.extractText(response);
+            try {
+                const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
+                return JSON.parse(cleaned);
+            } catch (e) {
+                console.error(`Failed to parse batch ${index + 1} response:`, e, text_response);
+                return { action: 'remove', removeCardIds: [], cards: [] };
+            }
+        }));
+
+        // Merge batch results
+        const merged = {
+            action: 'mixed',
+            removeCardIds: [],
+            cards: [],
+            collectionUpdates: {}
+        };
+
+        for (const result of batchResults) {
+            if (result.removeCardIds?.length > 0) {
+                merged.removeCardIds.push(...result.removeCardIds);
+            }
+            if (result.cards?.length > 0) {
+                merged.cards.push(...result.cards);
+            }
+        }
+
+        // Determine final action
+        if (merged.removeCardIds.length > 0 && merged.cards.length > 0) {
+            merged.action = 'mixed';
+        } else if (merged.removeCardIds.length > 0) {
+            merged.action = 'remove';
+        } else if (merged.cards.length > 0) {
+            merged.action = 'modify';
+        }
+
+        console.log(`Batch processing complete: ${merged.removeCardIds.length} removals, ${merged.cards.length} modifications`);
+        return merged;
     },
 
     /**

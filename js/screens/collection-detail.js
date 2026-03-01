@@ -124,7 +124,12 @@ const CollectionDetailScreen = {
         };
 
         return `
-            <div class="bg-surface-dark rounded-xl p-4 border border-white/5 flex items-center gap-3 ${this.isEditing ? 'pr-2' : ''}" data-card-id="${card.id}">
+            <div class="bg-surface-dark rounded-xl p-4 border border-white/5 flex items-center gap-3 transition-all ${this.isEditing ? 'pr-2' : 'cursor-pointer hover:bg-white/5 active:scale-[0.99]'}" data-card-id="${card.id}" ${!this.isEditing ? `onclick="CollectionDetailScreen.editCard('${card.id}')"` : ''}>
+                ${this.isEditing ? `
+                    <button onclick="CollectionDetailScreen.deleteCard('${card.id}')" class="size-8 shrink-0 rounded-lg bg-red-500/15 flex items-center justify-center hover:bg-red-500/30 transition-colors">
+                        <span class="material-symbols-outlined text-sm text-red-400">remove</span>
+                    </button>
+                ` : ''}
                 <div class="flex-1 min-w-0">
                     <p class="font-bold text-white truncate card-front">${card.front}</p>
                     <p class="text-sm text-slate-400 truncate card-back">${card.back}</p>
@@ -133,13 +138,8 @@ const CollectionDetailScreen = {
                     <span class="px-2 py-1 rounded-lg text-xs font-medium ${masteryColors[masteryLevel]}">
                         ${masteryLevel === 'high' ? 'Mastered' : masteryLevel === 'medium' ? 'Learning' : 'New'}
                     </span>
-                    ${this.isEditing ? `
-                        <button onclick="CollectionDetailScreen.editCard('${card.id}')" class="size-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10">
-                            <span class="material-symbols-outlined text-sm text-slate-400">edit</span>
-                        </button>
-                        <button onclick="CollectionDetailScreen.deleteCard('${card.id}')" class="size-8 rounded-lg bg-red-500/10 flex items-center justify-center hover:bg-red-500/20">
-                            <span class="material-symbols-outlined text-sm text-red-400">delete</span>
-                        </button>
+                    ${!this.isEditing ? `
+                        <span class="material-symbols-outlined text-sm text-slate-600">chevron_right</span>
                     ` : ''}
                 </div>
             </div>
@@ -200,12 +200,19 @@ const CollectionDetailScreen = {
         }
     },
 
-    deleteCard(cardId) {
-        if (confirm('Delete this card?')) {
-            DataStore.deleteCard(cardId);
-            app.showToast('Card deleted', 'success');
-            this.render();
+    async deleteCard(cardId) {
+        await DataStore.deleteCard(cardId);
+
+        // Animate removal
+        const el = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (el) {
+            el.classList.add('opacity-0', 'scale-95', '-translate-x-4', 'transition-all', 'duration-300');
+            setTimeout(() => el.remove(), 300);
         }
+
+        this.updateCardCount();
+        this.updateProgressBar();
+        app.showToast('Card deleted', 'success');
     },
 
     showMenu() {
@@ -597,11 +604,10 @@ const CollectionDetailScreen = {
             // Remove cards if specified
             let removedCount = 0;
             if (result.removeCardIds && result.removeCardIds.length > 0) {
-                result.removeCardIds.forEach(cardId => {
-                    DataStore.deleteCard(cardId);
+                for (const cardId of result.removeCardIds) {
+                    await DataStore.deleteCard(cardId);
                     removedCount++;
-                });
-                // Remove card elements from DOM
+                }
                 this.removeCardElements(result.removeCardIds);
             }
 
@@ -609,30 +615,34 @@ const CollectionDetailScreen = {
             let addedCount = 0;
             let modifiedCount = 0;
             if (result.cards && result.cards.length > 0) {
-                if (result.action === 'modify') {
-                    result.cards.forEach(card => {
-                        if (card.cardId) {
-                            DataStore.updateCard(card.cardId, card);
-                            modifiedCount++;
-                        }
+                // Separate cards with cardId (modifications) from new cards
+                const modifications = result.cards.filter(c => c.cardId);
+                const additions = result.cards.filter(c => !c.cardId);
+
+                // Apply modifications
+                for (const card of modifications) {
+                    await DataStore.updateCard(card.cardId, card);
+                    modifiedCount++;
+                }
+                if (modifications.length > 0) {
+                    this.updateCardElements(modifications);
+                }
+
+                // Apply additions
+                for (const card of additions) {
+                    await DataStore.addCard({
+                        ...card,
+                        collectionId: this.collectionId
                     });
-                    // Update modified card elements in-place
-                    this.updateCardElements(result.cards);
-                } else {
-                    result.cards.forEach(card => {
-                        DataStore.addCard({
-                            ...card,
-                            collectionId: this.collectionId
-                        });
-                        addedCount++;
-                    });
-                    // Append new card elements to DOM
+                    addedCount++;
+                }
+                if (additions.length > 0) {
                     this.appendCardElements();
                 }
             }
 
-            // For mixed actions, just re-render the card list
-            if (result.action === 'mixed') {
+            // If many changes happened, just refresh the whole list for consistency
+            if (removedCount + modifiedCount + addedCount > 10) {
                 this.refreshCardList();
             }
 
