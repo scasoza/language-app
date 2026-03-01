@@ -169,7 +169,7 @@ const DialogueSettingsScreen = {
                             <div class="relative bg-gradient-to-r from-primary to-[#0bc769] rounded-xl py-4 flex items-center justify-center gap-3 border border-white/20">
                                 ${this.isGenerating
                                     ? '<div class="spinner"></div><span class="text-background-dark font-bold text-lg">Generating...</span>'
-                                    : '<span class="material-symbols-outlined text-background-dark animate-pulse">auto_awesome</span><span class="text-background-dark font-bold text-lg tracking-wide">Generate Dialogue</span>'}
+                                    : '<span class="text-background-dark font-bold text-lg tracking-wide">Generate Dialogue</span>'}
                             </div>
                         </button>
                     </div>

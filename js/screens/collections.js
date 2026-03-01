@@ -49,14 +49,13 @@ const CollectionsScreen = {
                     <div class="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
                         <div class="flex items-start gap-3">
                             <div class="size-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+                                <span class="material-symbols-outlined text-primary text-2xl">add_circle</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-white mb-1">Create faster</h3>
-                                <p class="text-xs text-slate-300 mb-3">Build decks from text, audio, or images in seconds</p>
+                                <h3 class="text-sm font-bold text-white mb-1">Create a deck</h3>
+                                <p class="text-xs text-slate-300 mb-3">Use text, voice, or images to build decks instantly</p>
                                 <button onclick="app.showCreateCollectionModal()" class="bg-primary text-background-dark px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                                    <span class="material-symbols-outlined text-sm">flash_on</span>
-                                    Generate Deck
+                                    New Deck
                                 </button>
                             </div>
                         </div>
@@ -135,9 +134,6 @@ const CollectionsScreen = {
 
                 <!-- Card Content -->
                 <div class="relative z-10 p-4 w-full">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-2xl">${col.emoji}</span>
-                    </div>
                     <h3 class="text-lg font-bold text-white leading-tight mb-1">${col.name}</h3>
                     <div class="flex items-center justify-between text-xs text-gray-300 mb-3 font-medium">
                         <span>${statusText}</span>
@@ -200,7 +196,7 @@ const CollectionsScreen = {
     },
 
     // Add placeholder card while AI generates
-    addPlaceholder(id, topic, emoji) {
+    addPlaceholder(id, topic) {
         const grid = document.querySelector('.grid');
         if (!grid) return;
 
@@ -213,7 +209,6 @@ const CollectionsScreen = {
             </div>
             <div class="p-4">
                 <div class="flex items-center gap-2 mb-2">
-                    <span class="text-2xl">${emoji}</span>
                     <h3 class="font-bold text-base truncate">${topic}</h3>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Generating deck...</p>

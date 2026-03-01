@@ -145,7 +145,7 @@ const HomeScreen = {
  <button onclick="app.openCollection('${col.id}')" class="snap-start shrink-0 w-60 lg:w-auto rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col text-left hover:scale-[1.02] transition-transform active:scale-[0.98]">
  <div class="h-32 w-full bg-cover bg-center relative" style="background-image: url('${col.image}');">
  <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
- <span class="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/40 backdrop-blur-sm text-xs font-medium text-white border border-white/10">${col.emoji} ${col.name}</span>
+ <span class="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/40 backdrop-blur-sm text-xs font-medium text-white border border-white/10">${col.name}</span>
  </div>
  <div class="p-3">
  <h4 class="font-bold text-base mb-1 truncate">${col.name}</h4>

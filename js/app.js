@@ -246,11 +246,6 @@ const app = {
                     <input type="text" id="collection-name" placeholder="e.g., Spanish Verbs" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
                 </div>
 
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji (Optional)</label>
-                    <input type="text" id="collection-emoji" placeholder="🇪🇸" maxlength="2" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50" />
-                </div>
-
                 <div class="pt-2 border-t border-white/10">
                     <div class="flex items-center justify-between mb-3">
                         <p class="text-sm font-bold text-primary">Create from text, audio, and images</p>
@@ -277,7 +272,6 @@ const app = {
                         Create Empty Deck
                     </button>
                     <button onclick="app.createCollection(true)" class="flex-1 bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                        <span class="material-symbols-outlined text-xl">auto_awesome</span>
                         Create from Input
                     </button>
                 </div>
@@ -331,7 +325,7 @@ const app = {
             return '<option value="">No decks yet — create one first</option>';
         }
 
-        return collections.map(col => `<option value="${col.id}">${col.emoji || '📚'} ${col.name}</option>`).join('');
+        return collections.map(col => `<option value="${col.id}">${col.name}</option>`).join('');
     },
 
     async createCardFromModal() {
@@ -370,11 +364,9 @@ const app = {
 
     async createCollection(withAI = false) {
         const nameInput = document.getElementById('collection-name');
-        const emojiInput = document.getElementById('collection-emoji');
         const topicInput = document.getElementById('collection-topic');
 
         const name = nameInput?.value?.trim();
-        const emoji = emojiInput?.value?.trim() || '📚';
         const topic = topicInput?.value?.trim();
 
         if (withAI) {
@@ -405,7 +397,7 @@ const app = {
 
             // Add placeholder card to collections screen
             const placeholderId = 'placeholder-' + Date.now();
-            this.showPlaceholderCollection(placeholderId, topic || 'New Deck', emoji);
+            this.showPlaceholderCollection(placeholderId, topic || 'New Deck');
 
             try {
                 const user = DataStore.getUser();
@@ -428,7 +420,6 @@ const app = {
 
                 const collection = await DataStore.addCollection({
                     name: result.name || topic,
-                    emoji: result.emoji || emoji,
                     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
                 });
 
@@ -464,7 +455,6 @@ const app = {
 
             await DataStore.addCollection({
                 name,
-                emoji,
                 image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACoj-K0BPLOsYgV7-kqnQ3Kc8RBHW-0dcMMAhvSRkQ9ZzBFf2E0zVC4OppgQuRCDoEe8wgyID-EmbYHgtToi4z5vB-Z4s4LmS--R63bk6jkHtSTeQ04kp2YZKiH_2m2Tx4Ae2ZXZf2p5b05vQ_762DRKbKFh2-ZmJEXgv8Mq3JqZ7NSczx15tr9mhlZ0bWsI3m9EvNSXPFpnE2rBr17lGdGDW_cR4acoKubrJmny_uToJsfMlRaXOmoPCpNoM52buN0LRFwWNki6yU'
             });
 
@@ -582,7 +572,7 @@ const app = {
             <div class="relative mb-8">
                 <div class="size-24 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
                 <div class="absolute inset-0 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-3xl text-primary animate-pulse">auto_awesome</span>
+                    <span class="material-symbols-outlined text-3xl text-primary animate-pulse">hourglass_top</span>
                 </div>
             </div>
             <h2 class="text-2xl font-bold mb-2 text-center">${title}</h2>
@@ -917,10 +907,10 @@ const app = {
     },
 
     // Placeholder collection card for generation
-    showPlaceholderCollection(id, topic, emoji = '✨') {
+    showPlaceholderCollection(id, topic) {
         // Only add placeholder if we're on collections screen
         if (this.currentScreen === 'collections') {
-            CollectionsScreen.addPlaceholder(id, topic, emoji);
+            CollectionsScreen.addPlaceholder(id, topic);
         }
     },
 

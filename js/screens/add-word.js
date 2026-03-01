@@ -168,7 +168,7 @@ const AddWordScreen = {
                                     ? 'border-primary bg-primary/10'
                                     : 'border-gray-200 dark:border-white/10 hover:border-primary/50'}"
                             >
-                                <span class="text-xl">${col.emoji}</span>
+                                <span class="material-symbols-outlined text-primary text-lg">style</span>
                                 <span class="text-sm font-medium truncate">${col.name}</span>
                             </button>
                         `).join('')}
@@ -180,7 +180,7 @@ const AddWordScreen = {
                     <button onclick="AddWordScreen.generateWithAI()" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 text-white shadow-lg hover:scale-[1.02] transition-transform active:scale-[0.98] group ${this.isLoading ? 'opacity-50 pointer-events-none' : ''}">
                         <div class="flex items-center gap-3">
                             <div class="bg-white/20 h-8 w-8 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined">auto_awesome</span>
+                                <span class="material-symbols-outlined">lightbulb</span>
                             </div>
                             <div class="flex flex-col items-start">
                                 <span class="text-sm font-bold">Auto-fill suggestion</span>

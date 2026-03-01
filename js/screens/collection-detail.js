@@ -59,7 +59,6 @@ const CollectionDetailScreen = {
                     <!-- Collection info -->
                     <div class="absolute bottom-4 left-4 right-4 z-10">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="text-3xl">${collection.emoji}</span>
                             <h1 class="text-2xl font-bold text-white">${collection.name}</h1>
                         </div>
                         <p class="text-sm text-white/70">${cards.length} cards${dueCards.length > 0 ? ` · ${dueCards.length} due` : ''}</p>
@@ -85,9 +84,9 @@ const CollectionDetailScreen = {
                             <span class="text-lg">Study Now</span>
                         </button>
                     ` : ''}
-                    <button onclick="CollectionDetailScreen.addCard()" class="${cards.length === 0 ? 'flex-1 bg-primary text-background-dark' : 'bg-surface-dark border border-white/10'} ${cards.length === 0 ? 'py-4' : 'size-14'} font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-${cards.length === 0 ? 'primary/90' : 'white/5'} transition-colors">
-                        <span class="material-symbols-outlined ${cards.length === 0 ? 'text-2xl' : 'text-primary'}">add</span>
-                        ${cards.length === 0 ? '<span class="text-lg">Add Cards</span>' : ''}
+                    <button onclick="CollectionDetailScreen.showAIEditModal()" class="${cards.length === 0 ? 'flex-1 bg-primary text-background-dark' : 'flex-1 bg-surface-dark border border-white/10 text-white'} py-4 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                        <span class="material-symbols-outlined ${cards.length === 0 ? 'text-2xl' : 'text-primary'}">edit_note</span>
+                        <span class="${cards.length === 0 ? 'text-lg' : ''}">Add or Edit Cards</span>
                     </button>
                 </div>
 
@@ -103,11 +102,7 @@ const CollectionDetailScreen = {
                     ${cards.length === 0 ? `
                         <div class="text-center py-12">
                             <span class="material-symbols-outlined text-5xl text-slate-500 mb-3">style</span>
-                            <p class="text-slate-400 mb-4">No cards yet</p>
-                            <button onclick="CollectionDetailScreen.addCard()" class="px-6 py-3 bg-primary text-background-dark rounded-xl font-bold inline-flex items-center gap-2">
-                                <span class="material-symbols-outlined">add</span>
-                                Add First Card
-                            </button>
+                            <p class="text-slate-400">No cards yet — use the button above to add cards</p>
                         </div>
                     ` : `
                         <div class="space-y-2">
@@ -116,12 +111,6 @@ const CollectionDetailScreen = {
                     `}
                 </div>
 
-                <!-- FAB for adding cards -->
-                <div class="fixed bottom-24 right-4 z-40">
-                    <button onclick="CollectionDetailScreen.addCard()" class="flex size-14 items-center justify-center rounded-full bg-primary shadow-lg text-background-dark hover:scale-105 transition-transform">
-                        <span class="material-symbols-outlined text-2xl">add</span>
-                    </button>
-                </div>
             </div>
         `;
     },
@@ -228,13 +217,9 @@ const CollectionDetailScreen = {
                     <span class="material-symbols-outlined text-slate-400">edit</span>
                     <span>Edit Collection Info</span>
                 </button>
-                <button onclick="CollectionDetailScreen.generateMoreCards()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
-                    <span class="material-symbols-outlined text-primary">auto_awesome</span>
-                    <span>Generate More Cards</span>
-                </button>
                 <button onclick="CollectionDetailScreen.showAIEditModal()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
-                    <span class="material-symbols-outlined text-primary">magic_button</span>
-                    <span>Edit Collection</span>
+                    <span class="material-symbols-outlined text-primary">edit_note</span>
+                    <span>Add or Edit Cards</span>
                 </button>
                 <button onclick="CollectionDetailScreen.resetProgress()" class="w-full p-4 bg-[#1a2e25] rounded-xl text-left flex items-center gap-3 hover:bg-white/5">
                     <span class="material-symbols-outlined text-amber-400">restart_alt</span>
@@ -264,10 +249,6 @@ const CollectionDetailScreen = {
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Name</label>
                     <input type="text" id="edit-collection-name" value="${collection.name}" class="w-full bg-[#1a2e25] border border-white/10 rounded-xl px-4 py-3" />
                 </div>
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Emoji</label>
-                    <input type="text" id="edit-collection-emoji" value="${collection.emoji}" maxlength="2" class="w-full bg-[#1a2e25] border border-white/10 rounded-xl px-4 py-3" />
-                </div>
                 <button onclick="CollectionDetailScreen.saveCollectionInfo()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl">
                     Save Changes
                 </button>
@@ -277,10 +258,9 @@ const CollectionDetailScreen = {
 
     saveCollectionInfo() {
         const name = document.getElementById('edit-collection-name')?.value?.trim();
-        const emoji = document.getElementById('edit-collection-emoji')?.value?.trim();
 
         if (name) {
-            DataStore.updateCollection(this.collectionId, { name, emoji: emoji || '📚' });
+            DataStore.updateCollection(this.collectionId, { name });
             app.closeModal();
             app.showToast('Collection updated!', 'success');
             this.render();
@@ -326,7 +306,7 @@ const CollectionDetailScreen = {
 
     resetProgress() {
         app.closeModal();
-        if (confirm('Reset all card progress in this collection? Cards will be marked as new.')) {
+        if (confirm('Reset all card progress? Cards will be marked as new.') && confirm('Are you sure? This cannot be undone.')) {
             const cards = DataStore.getCards(this.collectionId);
             cards.forEach(card => {
                 DataStore.updateCard(card.id, {
@@ -362,41 +342,42 @@ const CollectionDetailScreen = {
 
         app.showModal(`
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">Edit Collection</h3>
+                <h3 class="text-lg font-bold">Add or Edit Cards</h3>
                 <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
             <div class="space-y-4">
-                <div class="pt-2">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-bold text-primary">✨ Multi-input editing</p>
-                        <div class="flex gap-2">
-                            <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Record audio instructions">
-                                <span class="material-symbols-outlined text-primary text-xl">mic</span>
-                            </button>
-                            <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors" title="Upload image">
-                                <span class="material-symbols-outlined text-primary text-xl">image</span>
-                            </button>
-                            <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">What would you like to change?</label>
-                        <textarea id="ai-edit-instructions" rows="4" placeholder="Examples:
-• Add 20 more cards about Spanish restaurant vocabulary
-• Remove all cards related to greetings
-• Add cards for the words in this image
-• Create 10 cards based on this audio" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
-                        <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
-                        <p class="text-xs text-slate-500 mt-1">💡 Use text, audio, images, or any combination. Specify card count if needed!</p>
-                    </div>
+                <p class="text-sm text-slate-400">Describe what you want — add cards, remove cards, or modify existing ones.</p>
+
+                <div>
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">Instructions</label>
+                    <textarea id="ai-edit-instructions" rows="4" placeholder="Examples:
+- Add 20 cards about restaurant vocabulary
+- Remove all cards related to greetings
+- Add cards for the words in this image
+- Create 10 cards based on what I say" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                    <div id="ai-edit-preview" class="mt-2 flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Voice input - prominent -->
+                <button id="ai-edit-audio-btn" onclick="CollectionDetailScreen.toggleEditAudioRecording()" class="w-full py-4 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-3 hover:bg-white/5 transition-colors">
+                    <span class="material-symbols-outlined text-primary text-2xl">mic</span>
+                    <span class="font-medium">Record Voice Instructions</span>
+                </button>
+
+                <!-- Image upload - secondary -->
+                <div class="flex items-center gap-3">
+                    <button id="ai-edit-image-btn" onclick="document.getElementById('ai-edit-image-input').click()" class="flex-1 py-3 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors text-sm">
+                        <span class="material-symbols-outlined text-slate-400">image</span>
+                        <span class="text-slate-400">Attach Image</span>
+                    </button>
+                    <input type="file" id="ai-edit-image-input" accept="image/*" class="hidden" onchange="CollectionDetailScreen.handleEditImageUpload(event)" />
                 </div>
 
                 <button onclick="CollectionDetailScreen.processAIEdit()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                    <span class="material-symbols-outlined text-xl">auto_awesome</span>
-                    Apply Changes
+                    Apply
                 </button>
             </div>
         `);
@@ -445,6 +426,7 @@ const CollectionDetailScreen = {
             const recordBtn = document.getElementById('ai-edit-audio-btn');
             if (recordBtn) {
                 recordBtn.classList.add('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.classList.remove('bg-surface-dark', 'border-white/10');
                 recordBtn.querySelector('.material-symbols-outlined').classList.add('text-red-500');
                 recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-primary');
             }
@@ -464,6 +446,7 @@ const CollectionDetailScreen = {
             const recordBtn = document.getElementById('ai-edit-audio-btn');
             if (recordBtn) {
                 recordBtn.classList.remove('bg-red-500/20', 'border-red-500', 'animate-pulse');
+                recordBtn.classList.add('bg-surface-dark', 'border-white/10');
                 recordBtn.querySelector('.material-symbols-outlined').classList.remove('text-red-500');
                 recordBtn.querySelector('.material-symbols-outlined').classList.add('text-primary');
             }

@@ -161,7 +161,7 @@ const SettingsScreen = {
                             return `
                                 <button onclick="SettingsScreen.toggleExcludedCollection('${collection.id}')" class="w-full flex items-center justify-between p-4 border-t border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                     <div class="flex items-center gap-3 text-left">
-                                        <span class="text-lg">${collection.emoji || '📚'}</span>
+                                        <span class="material-symbols-outlined text-primary text-lg">style</span>
                                         <div class="flex flex-col">
                                             <span class="font-medium">${collection.name}</span>
                                             <span class="text-xs text-slate-400">${collection.cardCount || 0} cards</span>
