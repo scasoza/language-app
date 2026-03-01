@@ -148,8 +148,8 @@
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
     <div id="app" class="relative flex min-h-screen w-full flex-col lg:pl-72 overflow-x-hidden bg-background-light dark:bg-background-dark" style="min-height:100vh">
 
-        <!-- Splash / Loading Screen (visible until app navigates to a real screen) -->
-        <div id="splash-screen" class="flex flex-col items-center justify-center min-h-screen w-full">
+        <!-- Splash / Loading Screen (fixed overlay until app navigates to a real screen) -->
+        <div id="splash-screen" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background-light dark:bg-background-dark">
             <h1 class="text-3xl font-bold mb-6"><span style="color:#0df280">Lingua</span><span>Flow</span></h1>
             <div style="border:3px solid rgba(13,242,128,0.2);border-top:3px solid #0df280;border-radius:50%;width:32px;height:32px;animation:spin 1s linear infinite"></div>
         </div>
