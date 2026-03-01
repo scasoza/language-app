@@ -778,13 +778,8 @@ Text: "${text}"`;
         if (audio) inputDescription += 'Audio instructions provided.\n';
         if (image) inputDescription += 'Image provided for context.\n';
 
-        // Send all cards with IDs so AI can reference them for modify/delete.
-        // For very large decks (500+), send a compact format to stay within token limits.
-        const cardListLimit = 500;
-        const cardList = existingCards.length <= cardListLimit
-            ? existingCards.map(c => `[${c.id}] ${c.front} → ${c.back}`).join('\n')
-            : existingCards.slice(0, cardListLimit).map(c => `[${c.id}] ${c.front} → ${c.back}`).join('\n')
-              + `\n... (${existingCards.length - cardListLimit} more cards not shown)`;
+        // Send all cards with IDs so AI can accurately reference any card for modify/delete.
+        const cardList = existingCards.map(c => `[${c.id}] ${c.front} → ${c.back}`).join('\n');
 
         const prompt = `You are a language learning expert. Edit this flashcard collection based on user instructions.
 
