@@ -978,31 +978,43 @@ Respond ONLY with valid JSON:
     },
 
     /**
-     * Explain a word or phrase
-     * @param {string} text - Word/phrase to explain
-     * @param {string} language - The language of the text
-     * @returns {Promise<Object>} - Explanation with grammar, usage, etc.
+     * Analyze an example sentence — break it apart word by word
+     * @param {string} sentence - The sentence to analyze
+     * @param {string} translation - The sentence's translation (for context)
+     * @param {string} language - The language of the sentence
+     * @returns {Promise<Object>} - Word-by-word breakdown with roles and structure
      */
-    async explainWord(text, language = 'Spanish') {
-        const prompt = `You are a ${language} language tutor. Explain the following word/phrase in detail for a learner:
+    async analyzeSentence(sentence, translation, language = 'Spanish') {
+        const isChinese = language.toLowerCase().includes('chinese') || language.toLowerCase().includes('mandarin');
 
-Word/Phrase: "${text}"
+        const prompt = `You are a ${language} language tutor. Break down this sentence word by word for a learner.
 
-Provide:
-1. meaning: Simple definition
-2. partOfSpeech: noun, verb, adjective, etc.
-3. pronunciation: Phonetic guide
-4. usage: When/how to use it
-5. examples: 2-3 example sentences with translations
-6. relatedWords: 3-4 related vocabulary words
-7. tips: Any helpful tips for remembering
+Sentence: "${sentence}"
+Translation: "${translation || ''}"
 
-Respond with valid JSON only.`;
+For each meaningful word or grammatical unit in the sentence (in order of appearance), provide:
+1. word: the word/characters as they appear in the sentence
+2. reading: pronunciation guide${isChinese ? ' (pinyin)' : ''}
+3. meaning: what this word means in this context
+4. role: grammatical role (e.g., subject, verb, object, particle, measure word, adverb, conjunction, etc.)
+
+Then provide:
+- "structure": A brief explanation of the sentence structure and how the words combine (e.g. "Subject + Verb + Object pattern with a time marker")
+- "literal": A word-for-word literal translation showing the order of meaning
+
+Respond ONLY with valid JSON:
+{
+  "words": [
+    { "word": "${isChinese ? '我' : 'Yo'}", "reading": "${isChinese ? 'wǒ' : 'yoh'}", "meaning": "I/me", "role": "subject" }
+  ],
+  "structure": "How the words relate grammatically",
+  "literal": "Word-for-word translation in order"
+}`;
 
         const response = await this.callAPI(this.MODELS.FLASH, prompt, {
-            temperature: 0.5,
+            temperature: 0.3,
             maxTokens: 2048,
-            thinkingLevel: this.THINKING_LEVELS.MEDIUM // Good reasoning for comprehensive explanation
+            thinkingLevel: this.THINKING_LEVELS.MEDIUM
         });
 
         const text_response = this.extractText(response);
@@ -1011,7 +1023,7 @@ Respond with valid JSON only.`;
             const cleaned = text_response.replace(/```json\n?|\n?```/g, '').trim();
             return JSON.parse(cleaned);
         } catch (e) {
-            return { meaning: text_response };
+            return { words: [], structure: text_response, literal: '' };
         }
     }
 };

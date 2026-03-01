@@ -291,10 +291,6 @@ const StudyScreen = {
                                         <button onclick="event.stopPropagation(); StudyScreen.playAudio()" class="size-10 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group" title="Replay audio">
                                             <span class="material-symbols-outlined text-primary group-hover:text-background-dark">replay</span>
                                         </button>
-                                        <!-- Hidden for MVP -->
-                                        <button hidden onclick="event.stopPropagation(); StudyScreen.showGrammarBreakdown()" class="size-10 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Grammar breakdown">
-                                            <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark">school</span>
-                                        </button>
                                     </div>
 
                                     <!-- Context Sentence -->
@@ -302,9 +298,14 @@ const StudyScreen = {
                                         <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark/50 w-full border border-slate-100 dark:border-white/5">
                                             <div class="flex items-center justify-between mb-2">
                                                 <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold text-left">Example</p>
-                                                <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
-                                                    <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
-                                                </button>
+                                                <div class="flex items-center gap-1.5">
+                                                    <button onclick="event.stopPropagation(); StudyScreen.showSentenceBreakdown()" class="size-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center hover:bg-amber-500 hover:text-background-dark transition-all group" title="Sentence breakdown">
+                                                        <span class="material-symbols-outlined text-amber-500 group-hover:text-background-dark text-base">menu_book</span>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); StudyScreen.playExampleAudio()" class="size-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary hover:text-background-dark transition-all group">
+                                                        <span class="material-symbols-outlined text-primary group-hover:text-background-dark text-base">volume_up</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <p class="text-lg text-slate-700 dark:text-slate-200 leading-snug font-medium">${exampleMarkup}</p>
                                             ${card.exampleTranslation ? `<p class="text-sm text-slate-400 dark:text-slate-500 mt-1 italic">(${card.exampleTranslation})</p>` : ''}
@@ -877,7 +878,7 @@ const StudyScreen = {
         app.showToast(`Playback speed: ${this.playbackSpeed}x`, 'success');
     },
 
-    // Play pronunciation for an individual word/character
+    // Play pronunciation for an individual word/character (with localStorage caching)
     async playWordAudio(word) {
         if (!word || this.isPlayingWordAudio) {
             console.log('⏸️ Word audio already playing or no word provided');
@@ -891,16 +892,32 @@ const StudyScreen = {
             const collection = DataStore.getCollection(card?.collectionId);
             const user = DataStore.getUser();
             const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
+            const trimmed = word.trim();
 
-            console.log(`🔊 Generating TTS for word: "${word}"`);
-
-            // Generate TTS for the word
-            let audioData;
+            // Check localStorage cache for this word's audio
+            const cacheKey = `wordaudio_${targetLanguage}_${trimmed}`;
+            let audioData = null;
             try {
-                audioData = await GeminiService.generateCloudTTS(word.trim(), targetLanguage);
-            } catch (cloudError) {
-                console.warn('⚠️ Cloud TTS failed, falling back to Gemini TTS');
-                audioData = await GeminiService.generateTTS(word.trim());
+                audioData = localStorage.getItem(cacheKey);
+            } catch (e) { /* ignore */ }
+
+            if (!audioData) {
+                console.log(`🔊 Generating TTS for word: "${trimmed}"`);
+                try {
+                    audioData = await GeminiService.generateCloudTTS(trimmed, targetLanguage);
+                } catch (cloudError) {
+                    console.warn('⚠️ Cloud TTS failed, falling back to Gemini TTS');
+                    audioData = await GeminiService.generateTTS(trimmed);
+                }
+
+                // Cache to localStorage
+                if (audioData) {
+                    try {
+                        localStorage.setItem(cacheKey, audioData);
+                    } catch (e) {
+                        console.warn('Could not cache word audio (storage full?):', e);
+                    }
+                }
             }
 
             if (audioData) {
@@ -929,101 +946,99 @@ const StudyScreen = {
         }
     },
 
-    // Show grammar breakdown for the current card
-    async showGrammarBreakdown() {
+    // Show sentence breakdown for the current card's example
+    async showSentenceBreakdown() {
         const card = this.cards[this.currentIndex];
-        if (!card) return;
+        if (!card || !card.example) return;
 
         const collection = DataStore.getCollection(card.collectionId);
         const user = DataStore.getUser();
         const targetLanguage = collection?.targetLanguage || user?.targetLanguage || 'Spanish';
 
         try {
-            app.showToast('Analyzing grammar...', 'info');
+            // Check localStorage cache first
+            const cacheKey = `breakdown_${card.id}_${card.example}`;
+            let analysis = null;
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) analysis = JSON.parse(cached);
+            } catch (e) { /* ignore parse errors */ }
 
-            const explanation = await GeminiService.explainWord(card.front, targetLanguage);
+            if (!analysis) {
+                app.showToast('Analyzing sentence...', 'info');
+                analysis = await GeminiService.analyzeSentence(card.example, card.exampleTranslation, targetLanguage);
+
+                // Save to localStorage for future use
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify(analysis));
+                } catch (e) {
+                    console.warn('Could not cache sentence breakdown:', e);
+                }
+            }
+
+            const words = analysis.words || [];
+            const roleColors = {
+                'subject': 'bg-blue-500/15 border-blue-500/30 text-blue-400',
+                'verb': 'bg-rose-500/15 border-rose-500/30 text-rose-400',
+                'object': 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+                'adverb': 'bg-purple-500/15 border-purple-500/30 text-purple-400',
+                'adjective': 'bg-teal-500/15 border-teal-500/30 text-teal-400',
+                'particle': 'bg-slate-500/15 border-slate-500/30 text-slate-400',
+                'preposition': 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400',
+                'conjunction': 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400',
+                'measure word': 'bg-orange-500/15 border-orange-500/30 text-orange-400',
+            };
+            const defaultColor = 'bg-white/10 border-white/20 text-slate-300';
 
             app.showModal(`
                 <div class="space-y-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-2xl font-bold text-white">Grammar Breakdown</h2>
-                        <button onclick="app.closeModal()" class="size-8 rounded-full hover:bg-white/10 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-slate-400">close</span>
-                        </button>
-                    </div>
-
                     <div class="bg-surface-dark/50 rounded-xl p-4 border border-white/5">
-                        <p class="text-3xl font-bold text-primary mb-2">${card.front}</p>
-                        ${card.reading ? `<p class="text-slate-400">${card.reading}</p>` : ''}
+                        <p class="text-lg font-bold text-white leading-snug">${card.example}</p>
+                        ${card.exampleTranslation ? `<p class="text-sm text-slate-400 mt-1 italic">${card.exampleTranslation}</p>` : ''}
                     </div>
 
-                    ${explanation.meaning ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Meaning</p>
-                            <p class="text-white">${explanation.meaning}</p>
-                        </div>
-                    ` : ''}
-
-                    ${explanation.partOfSpeech ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Part of Speech</p>
-                            <p class="text-white capitalize">${explanation.partOfSpeech}</p>
-                        </div>
-                    ` : ''}
-
-                    ${explanation.pronunciation ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Pronunciation</p>
-                            <p class="text-white">${explanation.pronunciation}</p>
-                        </div>
-                    ` : ''}
-
-                    ${explanation.usage ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Usage</p>
-                            <p class="text-white">${explanation.usage}</p>
-                        </div>
-                    ` : ''}
-
-                    ${explanation.examples && Array.isArray(explanation.examples) && explanation.examples.length > 0 ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-2 font-bold">Examples</p>
-                            <div class="space-y-2">
-                                ${explanation.examples.map(ex => `
-                                    <div class="bg-surface-dark/30 rounded-lg p-3 border border-white/5">
-                                        <p class="text-white mb-1">${ex.sentence || ex}</p>
-                                        ${ex.translation ? `<p class="text-sm text-slate-400 italic">${ex.translation}</p>` : ''}
+                    <!-- Word-by-word breakdown -->
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wider mb-2 font-bold">Word by Word</p>
+                        <div class="space-y-2">
+                            ${words.map(w => {
+                                const role = (w.role || '').toLowerCase();
+                                const colorClass = roleColors[role] || defaultColor;
+                                return `
+                                    <div class="flex items-start gap-3 p-3 rounded-xl border ${colorClass}">
+                                        <div class="flex flex-col items-center min-w-[60px]">
+                                            <span class="text-xl font-bold text-white">${w.word}</span>
+                                            ${w.reading ? `<span class="text-xs text-slate-400">${w.reading}</span>` : ''}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <span class="text-sm text-white">${w.meaning}</span>
+                                            <span class="ml-2 text-[10px] uppercase tracking-wider font-bold opacity-70">${w.role || ''}</span>
+                                        </div>
                                     </div>
-                                `).join('')}
-                            </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    ${analysis.literal ? `
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Literal Translation</p>
+                            <p class="text-white italic">${analysis.literal}</p>
                         </div>
                     ` : ''}
 
-                    ${explanation.relatedWords && Array.isArray(explanation.relatedWords) && explanation.relatedWords.length > 0 ? `
+                    ${analysis.structure ? `
                         <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-2 font-bold">Related Words</p>
-                            <div class="flex flex-wrap gap-2">
-                                ${explanation.relatedWords.map(word => `
-                                    <span class="px-3 py-1 bg-primary/10 border border-primary/30 rounded-lg text-primary text-sm">
-                                        ${typeof word === 'string' ? word : word.word || ''}
-                                    </span>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    ${explanation.tips ? `
-                        <div>
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Tips</p>
-                            <p class="text-white">${explanation.tips}</p>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1 font-bold">Structure</p>
+                            <p class="text-white">${analysis.structure}</p>
                         </div>
                     ` : ''}
                 </div>
-            `, 'Grammar Breakdown');
+            `, 'Sentence Breakdown');
 
         } catch (error) {
-            console.error('Error showing grammar breakdown:', error);
-            app.showToast('Failed to load grammar breakdown', 'error');
+            console.error('Error showing sentence breakdown:', error);
+            app.showToast('Failed to analyze sentence', 'error');
         }
     },
 
