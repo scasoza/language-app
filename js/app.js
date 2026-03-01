@@ -40,6 +40,10 @@ const app = {
             if (screen) {
                 screen.classList.add('active');
 
+                // Hide splash screen on first navigation
+                const splash = document.getElementById('splash-screen');
+                if (splash) splash.remove();
+
                 // Render screen content
                 this.renderScreen(screenId);
 
