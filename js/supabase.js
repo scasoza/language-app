@@ -59,10 +59,15 @@ const SupabaseService = {
                 // Continue without session — user can re-authenticate
             }
 
-            // Listen for auth changes (login, logout, token refresh)
+            // Listen for auth changes (login, logout, token refresh, OAuth callback)
             this.client.auth.onAuthStateChange((event, session) => {
                 if (session?.user) {
                     this.user = session.user;
+                    // Handle OAuth redirect callback (e.g. Google sign-in returning)
+                    if (event === 'SIGNED_IN' && !this._oauthHandled) {
+                        this._oauthHandled = true;
+                        app.handleAuthenticatedSession();
+                    }
                 } else if (event === 'SIGNED_OUT') {
                     this.user = null;
                 }

@@ -5,15 +5,17 @@ export const config = {
   runtime: 'edge',
 };
 
+function escapeJS(str) {
+  return str.replace(/[\\"'\n\r\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+
 export default function handler(request) {
-  const config = {
-    SUPABASE_URL: process.env.SUPABASE_URL || '',
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-  };
+  const supabaseUrl = escapeJS(process.env.SUPABASE_URL || '');
+  const supabaseKey = escapeJS(process.env.SUPABASE_ANON_KEY || '');
 
   return new Response(
-    `window.SUPABASE_URL = "${config.SUPABASE_URL}";
-window.SUPABASE_ANON_KEY = "${config.SUPABASE_ANON_KEY}";`,
+    `window.SUPABASE_URL = "${supabaseUrl}";
+window.SUPABASE_ANON_KEY = "${supabaseKey}";`,
     {
       headers: {
         'Content-Type': 'application/javascript',

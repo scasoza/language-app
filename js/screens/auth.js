@@ -9,7 +9,7 @@ const AuthScreen = {
     error: null,
     allowDeveloperSignup: false,
     isDeveloperOnly() {
-        return window.LINGUAFLOW_DEV_AUTH_ONLY !== false;
+        return window.LINGUAFLOW_DEV_AUTH_ONLY === true;
     },
 
     render() {
