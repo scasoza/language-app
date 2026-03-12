@@ -38,8 +38,13 @@ const DataStore = {
 
     async loadFromSupabase() {
         try {
+            const timeout = (promise, ms) => Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase query timed out')), ms))
+            ]);
+
             // Load user profile from Supabase profiles table
-            const profile = await SupabaseService.getProfile();
+            const profile = await timeout(SupabaseService.getProfile(), 10000);
             if (profile) {
                 this.user = profile;
                 this.onboarded = profile.onboarded || false;
@@ -49,14 +54,16 @@ const DataStore = {
                 this.onboarded = false;
             }
 
-            // Load collections
-            this.collections = await SupabaseService.getCollections();
+            // Load collections, cards, and dialogues in parallel
+            const [collections, cards, dialogues] = await timeout(Promise.all([
+                SupabaseService.getCollections(),
+                SupabaseService.getCards(),
+                SupabaseService.getDialogues()
+            ]), 10000);
 
-            // Load cards
-            this.cards = (await SupabaseService.getCards()).map(card => this.normalizeCard(card));
-
-            // Load dialogues
-            this.dialogues = await SupabaseService.getDialogues();
+            this.collections = collections;
+            this.cards = cards.map(card => this.normalizeCard(card));
+            this.dialogues = dialogues;
         } catch (error) {
             console.error('Error loading from Supabase:', error);
             this.loadFromLocalStorage();
