@@ -1,16 +1,11 @@
 /**
  * Authentication Screen Component
- * Handles sign in, sign up, and password reset
+ * Google OAuth only
  */
 
 const AuthScreen = {
-    mode: 'signin', // 'signin', 'signup', 'reset'
     isLoading: false,
     error: null,
-    allowDeveloperSignup: false,
-    isDeveloperOnly() {
-        return window.LINGUAFLOW_DEV_AUTH_ONLY !== false;
-    },
 
     render() {
         const container = document.getElementById('screen-auth');
@@ -31,27 +26,18 @@ const AuthScreen = {
                         <p class="text-gray-400 mt-2">Master any language with smart study tools</p>
                     </div>
 
-                    <!-- Auth Form -->
+                    <!-- Google Sign In -->
                     <div class="w-full max-w-sm">
-                        ${this.isDeveloperOnly() ? `
-                            <div class="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-center text-sm text-primary">
-                                Developer login enabled. Multi-user sign-up can be turned on later.
-                            </div>
-                            <div class="mb-4 rounded-xl border border-white/10 bg-surface-dark px-4 py-3 text-xs text-gray-300">
-                                <p class="font-semibold text-white">Need a developer account?</p>
-                                <p class="mt-1 text-gray-400">Create one here so you can sign in and test Supabase storage.</p>
-                                <ul class="mt-2 list-disc list-inside space-y-1 text-gray-400">
-                                    <li>Disable “Confirm email” in Supabase Auth if you don’t want email confirmation.</li>
-                                    <li>Clear the email domain allowlist or add your domain (ex: gmail.com).</li>
-                                </ul>
-                                <button onclick="AuthScreen.enableDeveloperSignup()" class="mt-3 w-full rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20">
-                                    Create a developer account
-                                </button>
-                            </div>
-                        ` : ''}
-                        ${this.mode === 'signin' ? this.renderSignIn() : ''}
-                        ${this.mode === 'signup' ? this.renderSignUp() : ''}
-                        ${this.mode === 'reset' ? this.renderReset() : ''}
+                        <button
+                            onclick="AuthScreen.handleGoogleSignIn()"
+                            class="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-medium py-3 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
+                            ${this.isLoading ? 'disabled' : ''}
+                        >
+                            ${this.isLoading ? '<div class="spinner mx-auto"></div>' : `
+                                <svg class="size-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                                Continue with Google
+                            `}
+                        </button>
                     </div>
 
                     <!-- Error Message -->
@@ -71,266 +57,7 @@ const AuthScreen = {
         `;
     },
 
-    renderSignIn() {
-        return `
-            <form onsubmit="AuthScreen.handleSignIn(event)" class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Email</label>
-                    <input
-                        type="email"
-                        id="auth-email"
-                        required
-                        placeholder="you@example.com"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                </div>
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Password</label>
-                    <input
-                        type="password"
-                        id="auth-password"
-                        required
-                        placeholder="••••••••"
-                        minlength="6"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl shadow-neon hover:shadow-neon-hover transition-all disabled:opacity-50"
-                    ${this.isLoading ? 'disabled' : ''}
-                >
-                    ${this.isLoading ? '<div class="spinner mx-auto"></div>' : 'Sign In'}
-                </button>
-            </form>
-
-            ${this.isDeveloperOnly() ? '' : `
-                <div class="mt-4 space-y-3">
-                    <button onclick="AuthScreen.handleGoogleSignIn()" class="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-medium py-3 rounded-xl hover:bg-gray-100 transition-colors">
-                        <svg class="size-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                        Continue with Google
-                    </button>
-                </div>
-            `}
-
-            <div class="mt-6 text-center space-y-2">
-                <button onclick="AuthScreen.setMode('reset')" class="text-primary text-sm hover:underline">
-                    Forgot password?
-                </button>
-                ${this.isDeveloperOnly() ? '' : `
-                    <p class="text-gray-400 text-sm">
-                        Don't have an account?
-                        <button onclick="AuthScreen.setMode('signup')" class="text-primary font-medium hover:underline">Sign up</button>
-                    </p>
-                `}
-            </div>
-        `;
-    },
-
-    renderSignUp() {
-        return `
-            <form onsubmit="AuthScreen.handleSignUp(event)" class="space-y-4">
-                ${this.isDeveloperOnly() ? `
-                    <div class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary">
-                        Creating a developer account will let you sign in and use Supabase storage.
-                    </div>
-                ` : ''}
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Name</label>
-                    <input
-                        type="text"
-                        id="auth-name"
-                        required
-                        placeholder="Your name"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                </div>
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Email</label>
-                    <input
-                        type="email"
-                        id="auth-email"
-                        required
-                        placeholder="you@example.com"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                </div>
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Password</label>
-                    <input
-                        type="password"
-                        id="auth-password"
-                        required
-                        placeholder="••••••••"
-                        minlength="6"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                    <p class="text-xs text-gray-500 mt-1">At least 6 characters</p>
-                </div>
-                <button
-                    type="submit"
-                    class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl shadow-neon hover:shadow-neon-hover transition-all disabled:opacity-50"
-                    ${this.isLoading ? 'disabled' : ''}
-                >
-                    ${this.isLoading ? '<div class="spinner mx-auto"></div>' : 'Create Account'}
-                </button>
-            </form>
-
-            <div class="mt-6 text-center">
-                <p class="text-gray-400 text-sm">
-                    Already have an account?
-                    <button onclick="AuthScreen.setMode('signin')" class="text-primary font-medium hover:underline">Sign in</button>
-                </p>
-            </div>
-        `;
-    },
-
-    renderReset() {
-        return `
-            <form onsubmit="AuthScreen.handleReset(event)" class="space-y-4">
-                <p class="text-gray-400 text-sm text-center mb-4">
-                    Enter your email and we'll send you a link to reset your password.
-                </p>
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Email</label>
-                    <input
-                        type="email"
-                        id="auth-email"
-                        required
-                        placeholder="you@example.com"
-                        class="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl shadow-neon hover:shadow-neon-hover transition-all disabled:opacity-50"
-                    ${this.isLoading ? 'disabled' : ''}
-                >
-                    ${this.isLoading ? '<div class="spinner mx-auto"></div>' : 'Send Reset Link'}
-                </button>
-            </form>
-
-            <div class="mt-6 text-center">
-                <button onclick="AuthScreen.setMode('signin')" class="text-primary text-sm hover:underline">
-                    Back to sign in
-                </button>
-            </div>
-        `;
-    },
-
-    setMode(mode) {
-        this.mode = mode;
-        if (mode !== 'signup') {
-            this.allowDeveloperSignup = false;
-        }
-        this.error = null;
-        this.render();
-    },
-
-    enableDeveloperSignup() {
-        this.allowDeveloperSignup = true;
-        this.setMode('signup');
-    },
-    normalizeEmail(value) {
-        return value.trim().toLowerCase();
-    },
-    normalizeText(value) {
-        return value.trim();
-    },
-
-    async handleSignIn(event) {
-        event.preventDefault();
-
-        // Check if Supabase is configured
-        if (!SupabaseService.initialized && !SupabaseService.client) {
-            // Try to initialize first
-            await SupabaseService.init();
-            if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Please contact support.';
-                this.render();
-                return;
-            }
-        }
-
-        const email = this.normalizeEmail(document.getElementById('auth-email').value);
-        const password = this.normalizeText(document.getElementById('auth-password').value);
-        this.isLoading = true;
-        this.error = null;
-        this.render();
-
-        try {
-            await SupabaseService.signIn(email, password);
-            await app.handleAuthenticatedSession();
-        } catch (error) {
-            const message = error.message || 'Failed to sign in';
-            if (message.includes('Email address') && message.includes('invalid')) {
-                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
-            } else if (message.toLowerCase().includes('email not confirmed')) {
-                this.error = 'Your email is not confirmed. Confirm it or disable email confirmations in Supabase Auth settings.';
-            } else {
-                this.error = message;
-            }
-            this.isLoading = false;
-            this.render();
-        }
-    },
-
-    async handleSignUp(event) {
-        event.preventDefault();
-
-        if (this.isDeveloperOnly() && !this.allowDeveloperSignup) {
-            this.error = 'Sign up is disabled while developer-only access is enabled.';
-            this.render();
-            return;
-        }
-
-        // Check if Supabase is configured
-        if (!SupabaseService.initialized && !SupabaseService.client) {
-            await SupabaseService.init();
-            if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Please contact support.';
-                this.render();
-                return;
-            }
-        }
-
-        const name = this.normalizeText(document.getElementById('auth-name').value);
-        const email = this.normalizeEmail(document.getElementById('auth-email').value);
-        const password = this.normalizeText(document.getElementById('auth-password').value);
-        this.isLoading = true;
-        this.error = null;
-        this.render();
-
-        try {
-            const result = await SupabaseService.signUp(email, password, name);
-            if (result?.session) {
-                await app.handleAuthenticatedSession();
-                return;
-            }
-            this.error = null;
-            app.showToast('Account created. Check your email to confirm, or disable confirmations in Supabase Auth settings.', 'success');
-            this.setMode('signin');
-        } catch (error) {
-            const message = error.message || 'Failed to create account';
-            if (message.includes('Email address') && message.includes('invalid')) {
-                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
-            } else if (message.toLowerCase().includes('unexpected_failure')) {
-                this.error = 'Supabase signup failed server-side (500). Run migration 004_fix_auth_signup_trigger.sql and check Auth settings (email confirmations / allowlist).';
-            } else {
-                this.error = message;
-            }
-            this.isLoading = false;
-            this.render();
-        }
-    },
-
     async handleGoogleSignIn() {
-        if (this.isDeveloperOnly()) {
-            this.error = 'Google sign-in is disabled while developer-only access is enabled.';
-            this.render();
-            return;
-        }
-
         // Check if Supabase is configured
         if (!SupabaseService.initialized && !SupabaseService.client) {
             await SupabaseService.init();
@@ -340,47 +67,16 @@ const AuthScreen = {
                 return;
             }
         }
+
+        this.isLoading = true;
+        this.error = null;
+        this.render();
 
         try {
             await SupabaseService.signInWithGoogle();
             // Will redirect to Google
         } catch (error) {
             this.error = error.message || 'Failed to sign in with Google';
-            this.render();
-        }
-    },
-
-    async handleReset(event) {
-        event.preventDefault();
-
-        // Check if Supabase is configured
-        if (!SupabaseService.initialized && !SupabaseService.client) {
-            await SupabaseService.init();
-            if (!SupabaseService.client) {
-                this.error = 'Backend not configured. Please contact support.';
-                this.render();
-                return;
-            }
-        }
-
-        const email = this.normalizeEmail(document.getElementById('auth-email').value);
-        this.isLoading = true;
-        this.error = null;
-        this.render();
-
-        try {
-            await SupabaseService.resetPassword(email);
-            app.showToast('Check your email for the reset link!', 'success');
-            this.setMode('signin');
-        } catch (error) {
-            const message = error.message || 'Failed to send reset email';
-            if (message.includes('Email address') && message.includes('invalid')) {
-                this.error = 'Supabase rejected the email format. Check for extra spaces or update the Auth email allowlist in Supabase.';
-            } else if (message.toLowerCase().includes('email not confirmed')) {
-                this.error = 'Your email is not confirmed. Confirm it or disable email confirmations in Supabase Auth settings.';
-            } else {
-                this.error = message;
-            }
             this.isLoading = false;
             this.render();
         }
