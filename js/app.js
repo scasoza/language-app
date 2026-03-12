@@ -8,12 +8,20 @@ const app = {
     screensWithNav: ['home', 'collections', 'settings'],
 
     async init() {
+        // Safety net: if init hangs (slow network, stuck await), force-dismiss
+        // the splash screen after 8 seconds so the user isn't stuck forever.
+        const splashTimeout = setTimeout(() => {
+            console.warn('Init timeout — removing splash screen');
+            const splash = document.getElementById('splash-screen');
+            if (splash) splash.remove();
+        }, 8000);
+
         try {
             console.log('Initializing LinguaFlow...');
             this.registerSupabaseWarnings();
             this.registerAuthEvents();
 
-            // Initialize Supabase
+            // Initialize Supabase (with timeout so a stalled network doesn't block forever)
             await SupabaseService.init();
 
             if (SupabaseService.initialized && !SupabaseService.isAuthenticated()) {
@@ -27,6 +35,11 @@ const app = {
             console.error('App init error:', error);
             // Attempt to show home screen as fallback
             this.navigate('home');
+        } finally {
+            clearTimeout(splashTimeout);
+            // Guarantee splash is gone no matter what happened above
+            const splash = document.getElementById('splash-screen');
+            if (splash) splash.remove();
         }
     },
 

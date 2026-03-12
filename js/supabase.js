@@ -43,11 +43,20 @@ const SupabaseService = {
             this.client = window.supabase.createClient(supabaseUrl, supabaseKey);
             this.initialized = true;
 
-            // Restore existing session
-            const { data: { session } } = await this.client.auth.getSession();
-            if (session?.user) {
-                this.user = session.user;
-                console.log('Restored auth session for:', this.user.email);
+            // Restore existing session (with timeout — token refresh can stall on mobile networks)
+            try {
+                const sessionResult = await Promise.race([
+                    this.client.auth.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timed out')), 8000))
+                ]);
+                const session = sessionResult?.data?.session;
+                if (session?.user) {
+                    this.user = session.user;
+                    console.log('Restored auth session for:', this.user.email);
+                }
+            } catch (sessionError) {
+                console.warn('Session restore failed/timed out:', sessionError.message);
+                // Continue without session — user can re-authenticate
             }
 
             // Listen for auth changes (login, logout, token refresh)
@@ -69,17 +78,20 @@ const SupabaseService = {
         }
     },
 
-    // Load Supabase client library from CDN
+    // Load Supabase client library from CDN (with timeout for slow networks)
     loadSupabaseClient() {
         return new Promise((resolve, reject) => {
             if (window.supabase) {
                 resolve();
                 return;
             }
+            const timeout = setTimeout(() => {
+                reject(new Error('Supabase CDN script load timed out'));
+            }, 10000);
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            script.onload = resolve;
-            script.onerror = reject;
+            script.onload = () => { clearTimeout(timeout); resolve(); };
+            script.onerror = () => { clearTimeout(timeout); reject(new Error('Supabase CDN script failed to load')); };
             document.head.appendChild(script);
         });
     },
