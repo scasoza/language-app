@@ -1,7 +1,7 @@
 /**
  * Gemini API Service for LinguaFlow
  * Handles AI-powered features:
- * - Collection creation with Gemini 3 Flash (multimodal)
+ * - Collection creation with Gemini 3.1 Flash Lite (multimodal)
  * - Dialogue audio generation with Gemini 2.5 Flash TTS
  */
 
@@ -12,7 +12,7 @@ const GeminiService = {
 
     // Model IDs
     MODELS: {
-        FLASH: 'gemini-3-flash-preview', // For text/multimodal generation (Gemini 3 Flash)
+        FLASH: 'gemini-3.1-flash-lite-preview', // For text/multimodal generation (Gemini 3.1 Flash Lite)
         TTS: 'gemini-2.5-flash-preview-tts' // For text-to-speech
     },
 
