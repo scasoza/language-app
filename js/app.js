@@ -114,12 +114,24 @@ const app = {
 
     updateNavigation(screenId) {
         const nav = document.getElementById('bottom-nav');
+        const desktopNav = document.getElementById('desktop-nav');
+        const appContainer = document.getElementById('app');
 
         // Show/hide nav based on screen
         if (this.screensWithNav.includes(screenId)) {
             nav.classList.remove('hidden');
+            if (desktopNav) {
+                desktopNav.classList.remove('hidden');
+                desktopNav.classList.add('lg:flex');
+            }
+            if (appContainer) appContainer.classList.add('lg:pl-72');
         } else {
             nav.classList.add('hidden');
+            if (desktopNav) {
+                desktopNav.classList.add('hidden');
+                desktopNav.classList.remove('lg:flex');
+            }
+            if (appContainer) appContainer.classList.remove('lg:pl-72');
         }
 
         // Update active state
