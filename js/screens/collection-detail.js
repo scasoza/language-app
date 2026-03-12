@@ -277,11 +277,6 @@ const CollectionDetailScreen = {
     async generateMoreCards() {
         app.closeModal();
 
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
-
         const collection = DataStore.getCollection(this.collectionId);
         app.showLoadingOverlay('Generating cards...', 'Creating flashcards');
 
@@ -568,12 +563,6 @@ const CollectionDetailScreen = {
 
         if (!instructions && !audioData && !imageData) {
             app.showToast('Please provide instructions, audio, or images', 'error');
-            return;
-        }
-
-        if (!GeminiService.isConfigured()) {
-            app.closeModal();
-            app.showApiKeyModal();
             return;
         }
 

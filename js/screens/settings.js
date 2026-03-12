@@ -15,7 +15,6 @@ const SettingsScreen = {
         try {
             const user = DataStore.getUser();
             const stats = DataStore.getStats();
-            const apiConfigured = GeminiService.isConfigured();
             const collections = DataStore.getCollections();
             const excludedCollectionIds = user.settings?.excludedCollectionIds || [];
 
@@ -59,19 +58,6 @@ const SettingsScreen = {
                         </div>
                     </div>
                 </section>
-
-                <!-- API Key Section -->
-                <div class="px-4 mb-6">
-                    <div class="bg-gradient-to-r ${apiConfigured ? 'from-primary to-emerald-400' : 'from-amber-500 to-orange-500'} p-4 rounded-xl shadow-lg flex items-center justify-between text-background-dark">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-lg leading-tight">${apiConfigured ? 'API Connected' : 'Setup API Key'}</span>
-                            <span class="text-sm font-medium opacity-80">${apiConfigured ? 'Smart features enabled' : 'Enable smart features'}</span>
-                        </div>
-                        <button onclick="app.showApiKeyModal()" class="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
-                            <span class="material-symbols-outlined text-2xl">${apiConfigured ? 'check_circle' : 'key'}</span>
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Learning Goals Section -->
                 <div class="px-4">

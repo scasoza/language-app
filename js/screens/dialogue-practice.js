@@ -228,11 +228,6 @@ const DialoguePracticeScreen = {
 
     async getLineAudio(index, options = {}) {
         const { silent = false } = options;
-        if (!GeminiService.isConfigured()) {
-            app.showToast('Set up API key for audio', 'info');
-            return null;
-        }
-
         const line = this.dialogue.lines[index];
         if (!line) return null;
 
@@ -310,10 +305,6 @@ const DialoguePracticeScreen = {
             return;
         }
 
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
 
         try {
             app.showToast('Generating full dialogue audio...', 'info');
@@ -412,10 +403,6 @@ const DialoguePracticeScreen = {
     },
 
     async explainWord(word) {
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
 
         app.showToast('Getting explanation...', 'info');
 
@@ -488,10 +475,6 @@ const DialoguePracticeScreen = {
             return;
         }
 
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
 
         this.autoPlayEnabled = true;
         app.showToast('Auto-play started', 'success');

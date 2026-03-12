@@ -6,14 +6,14 @@ export const config = {
 };
 
 export default function handler(request) {
-  const config = {
-    SUPABASE_URL: process.env.SUPABASE_URL || '',
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-  };
+  const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/[\\"`]/g, '');
+  const supabaseKey = (process.env.SUPABASE_ANON_KEY || '').replace(/[\\"`]/g, '');
+  const geminiKey = (process.env.GEMINI_API_KEY || '').replace(/[\\"`]/g, '');
 
   return new Response(
-    `window.SUPABASE_URL = "${config.SUPABASE_URL}";
-window.SUPABASE_ANON_KEY = "${config.SUPABASE_ANON_KEY}";`,
+    `window.SUPABASE_URL = "${supabaseUrl}";
+window.SUPABASE_ANON_KEY = "${supabaseKey}";
+window.GEMINI_API_KEY = "${geminiKey}";`,
     {
       headers: {
         'Content-Type': 'application/javascript',

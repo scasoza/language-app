@@ -536,11 +536,6 @@ const StudyScreen = {
         const question = window.prompt('Ask a question about this card:');
         if (!question || !question.trim()) return;
 
-        if (!GeminiService.isConfigured()) {
-            app.showToast('Configure your Gemini API key in Settings to ask questions', 'error');
-            return;
-        }
-
         app.showToast('Asking Gemini...', 'info');
 
         try {
@@ -640,7 +635,7 @@ const StudyScreen = {
             // Generate TTS if no audio exists
             if (!audioData) {
                 if (!GeminiService.isConfigured()) {
-                    app.showToast('Configure Gemini API key in Settings to enable audio', 'error');
+                    app.showToast('Audio generation unavailable. Please try again.', 'error');
                     return;
                 }
 
@@ -702,7 +697,7 @@ const StudyScreen = {
                         app.showToast('Audio generation timed out. Please try again.', 'error');
                     } else if (genError.message.includes('API key')) {
                         console.error('❌ API key error:', genError);
-                        app.showToast('Invalid API key. Please check Settings.', 'error');
+                        app.showToast('API error. Please try again.', 'error');
                     } else if (genError.message.includes('quota')) {
                         console.error('❌ API quota exceeded:', genError);
                         app.showToast('API quota exceeded. Try again later.', 'error');
@@ -773,7 +768,7 @@ const StudyScreen = {
             // Generate TTS if no audio exists
             if (!audioData) {
                 if (!GeminiService.isConfigured()) {
-                    app.showToast('Configure Gemini API key in Settings to enable audio', 'error');
+                    app.showToast('Audio generation unavailable. Please try again.', 'error');
                     return;
                 }
 
@@ -835,7 +830,7 @@ const StudyScreen = {
                         app.showToast('Audio generation timed out. Please try again.', 'error');
                     } else if (genError.message.includes('API key')) {
                         console.error('❌ API key error:', genError);
-                        app.showToast('API key issue. Please check your settings.', 'error');
+                        app.showToast('API error. Please try again.', 'error');
                     } else {
                         console.error('❌ Example TTS generation failed:', genError);
                         app.showToast('Failed to generate example audio. Try again later.', 'error');

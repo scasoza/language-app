@@ -214,11 +214,6 @@ const DialogueSettingsScreen = {
     },
 
     async generate() {
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
-
         this.isGenerating = true;
         this.render();
 

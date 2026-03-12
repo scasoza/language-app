@@ -443,7 +443,7 @@ const DataStore = {
 
         // Clear localStorage
         ['linguaflow_onboarded', 'linguaflow_user', 'linguaflow_collections',
-         'linguaflow_cards', 'linguaflow_dialogues', 'gemini_api_key'].forEach(key => {
+         'linguaflow_cards', 'linguaflow_dialogues'].forEach(key => {
             localStorage.removeItem(key);
         });
     }

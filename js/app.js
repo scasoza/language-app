@@ -205,11 +205,6 @@ const app = {
     },
 
     applyUserSettings(user) {
-        // Load API key from user profile settings (synced via Supabase)
-        const apiKey = user?.settings?.geminiApiKey || localStorage.getItem('gemini_api_key');
-        if (apiKey) {
-            GeminiService.API_KEY = apiKey;
-        }
 
         if (user) {
             document.documentElement.classList.toggle('dark', user.settings.darkMode);
@@ -416,12 +411,6 @@ const app = {
                 return;
             }
 
-            if (!GeminiService.isConfigured()) {
-                this.closeModal();
-                this.showApiKeyModal();
-                return;
-            }
-
             // Close modal
             this.closeModal();
 
@@ -510,74 +499,6 @@ const app = {
     closeModal() {
         const container = document.getElementById('modal-container');
         container.classList.add('hidden');
-    },
-
-    // API Key Modal
-    showApiKeyModal() {
-        const currentKey = GeminiService.getApiKey();
-        const maskedKey = currentKey ? currentKey.slice(0, 8) + '...' + currentKey.slice(-4) : '';
-
-        this.showModal(`
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">Gemini API Key</h3>
-                <button onclick="app.closeModal()" class="text-gray-400 hover:text-white">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-
-            <p class="text-sm text-gray-400 mb-4">
-                Enter your Gemini API key to enable smart generation and audio features.
-            </p>
-
-            <div class="mb-4">
-                <a href="https://aistudio.google.com/apikey" target="_blank" class="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                    Get your API key
-                    <span class="material-symbols-outlined text-sm">open_in_new</span>
-                </a>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">API Key</label>
-                    <input type="password" id="api-key-input" placeholder="AIza..." value="${currentKey}" class="w-full bg-surface-light dark:bg-[#1a2e25] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 font-mono text-sm" />
-                    ${currentKey ? `<p class="text-xs text-gray-500 mt-1">Current: ${maskedKey}</p>` : ''}
-                </div>
-
-                <button onclick="app.saveApiKey()" class="w-full bg-primary text-background-dark font-bold py-3 rounded-xl">
-                    Save API Key
-                </button>
-            </div>
-        `);
-    },
-
-    async saveApiKey() {
-        const input = document.getElementById('api-key-input');
-        const key = input?.value?.trim();
-
-        if (!key) {
-            this.showToast('Please enter an API key', 'error');
-            return;
-        }
-
-        try {
-            // Save to GeminiService and local cache first
-            GeminiService.setApiKey(key);
-
-            // Also persist in user profile settings (syncs to Supabase when available)
-            const user = DataStore.getUser();
-            await DataStore.updateUser({
-                settings: { ...user.settings, geminiApiKey: key }
-            });
-
-            this.closeModal();
-            this.showToast('API key saved!', 'success');
-
-            // Refresh current screen
-            this.renderScreen(this.currentScreen);
-        } catch (error) {
-            console.error('Failed to save API key:', error);
-            this.showToast('Failed to save API key. Please try again.', 'error');
-        }
     },
 
     // Loading overlay with tips

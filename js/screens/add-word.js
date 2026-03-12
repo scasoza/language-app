@@ -243,10 +243,6 @@ const AddWordScreen = {
             return;
         }
 
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
 
         this.isLoading = true;
         this.render();
@@ -283,10 +279,6 @@ const AddWordScreen = {
             return;
         }
 
-        if (!GeminiService.isConfigured()) {
-            app.showApiKeyModal();
-            return;
-        }
 
         this.isLoading = true;
         this.render();

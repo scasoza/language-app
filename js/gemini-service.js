@@ -7,7 +7,7 @@
 
 const GeminiService = {
     // API configuration
-    API_KEY: '', // Set via setApiKey()
+    API_KEY: '', // Loaded from server config
     BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
 
     // Model IDs
@@ -44,26 +44,10 @@ const GeminiService = {
         }
     },
 
-    // Set API key (called from app.saveApiKey which handles persistence)
-    setApiKey(key) {
-        this.API_KEY = key;
-        localStorage.setItem('gemini_api_key', key);
-    },
-
-    // Get API key from storage
+    // Get API key from server-injected config
     getApiKey() {
         if (!this.API_KEY) {
-            // Try user profile settings first (synced via Supabase)
-            if (typeof DataStore !== 'undefined' && DataStore.getUser) {
-                const user = DataStore.getUser();
-                if (user?.settings?.geminiApiKey) {
-                    this.API_KEY = user.settings.geminiApiKey;
-                    return this.API_KEY;
-                }
-            }
-
-            // Fallback to localStorage
-            this.API_KEY = localStorage.getItem('gemini_api_key') || '';
+            this.API_KEY = window.GEMINI_API_KEY || '';
         }
         return this.API_KEY;
     },
@@ -77,7 +61,7 @@ const GeminiService = {
     async callAPI(model, contents, config = {}) {
         const apiKey = this.getApiKey();
         if (!apiKey) {
-            throw new Error('Gemini API key not configured. Please add your API key in settings.');
+            throw new Error('Gemini API key not configured. Please contact the administrator.');
         }
 
         const url = `${this.BASE_URL}/models/${model}:generateContent?key=${apiKey}`;
